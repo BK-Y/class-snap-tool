@@ -43,4 +43,4 @@ CREATE TABLE IF NOT EXISTS learning_records (
     content TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
-;
+);

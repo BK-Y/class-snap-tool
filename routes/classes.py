@@ -1,12 +1,12 @@
 from flask import Blueprint, render_template,request,redirect
 
-from db import get_db_connection
+from db import get_db
 
 classes_bp = Blueprint('classes',__name__,url_prefix='/classes')
 
 @classes_bp.route('/')
 def list_classes():
-    db = get_db_connection()
+    db = get_db()
     classes = db.execute(
         "SELECT * FROM classes WHERE status = 'active' ORDER BY id"
     ).fetchall()

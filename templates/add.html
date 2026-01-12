@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block title %}新增学员 - {{ super() }} {% endblock %}
+
+{% block content %}
+<h2> ➕ 新增学员 </h2>
+
+<form method = "POST">
+		<p><label> 姓名(证件)：<input type="text" name="name_id" required></label></p>
+		<p><label> 昵称：<input type="text" name="name_nick" required></label></p>
+		<p>
+			<label> 性别：</label><br>
+				<label><input type="radio" name="gender" value="男"> 男</label>
+				<label><input type="radio" name="gender" value="女"> 女</label>
+				<label><input type="radio" name="gender" value="其他"> 其他</label>
+		</p>
+		<p><label> 出生日期：<input type="date" name="birth_date"></label></p>
+		<p><label> 学校：<input type="text" name="school" ></label></p>
+		<p><button type="submit">提交</button><a href="{{ url_for('students.index') }}"> ← 返回列表</a></p>
+</form>
+{% endblock %}

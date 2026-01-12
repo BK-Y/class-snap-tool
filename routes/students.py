@@ -13,9 +13,9 @@ def index():
 
     # 调用通用查询函数
     students = db.search_students(
-        name_id = name_id or None,
-        name_nick = name_nick or None,
-        school = school or None,
+        legal_name = name_id or None,
+        display_name = name_nick or None,
+        # school = school or None,
         gender = gender or None
     )
 
