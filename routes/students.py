@@ -2,8 +2,7 @@ from flask import Blueprint, redirect, url_for,request,render_template
 import db
 students_bp = Blueprint('students',__name__)
 
-'''
-@students_bp.route('/')
+@students_bp.route('/students')
 def index():
     # 从URL查询参数获取筛选数据
     name_id = request.args.get('name_id','').strip()
@@ -28,9 +27,9 @@ def index():
         'gender':gender
     }
     # 调用你写的函数，获取所有活跃学员
-    return render_template('index.html', students=students,filters=filters)
-'''
-@students_bp.route('/add',methods=['GET','POST'])
+    return render_template('/student/view_all.html', students=students,filters=filters)
+
+@students_bp.route('/students/add',methods=['GET','POST'])
 def add_student():
     if request.method == 'POST':
         # 从表单获取数据
