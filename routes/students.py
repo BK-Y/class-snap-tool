@@ -27,7 +27,7 @@ def index():
         'gender':gender
     }
     # 调用你写的函数，获取所有活跃学员
-    return render_template('/student/view_all.html', students=students,filters=filters)
+    return render_template('/students/view_students.html', students=students,filters=filters)
 
 @students_bp.route('/students/add',methods=['GET','POST'])
 def add_student():
@@ -52,7 +52,7 @@ def add_student():
         return redirect(url_for('students.index'))
 
     # GET请求：显示空表达
-    return render_template('add.html')
+    return render_template('/students/add.html')
 
 @students_bp.route('/edit/<int:student_id>',methods=['GET','POST'])
 def edit_student(student_id):
