@@ -2,7 +2,12 @@
 
 #### Description
 根据自身需求设计的课堂小工具原型。尽量持续优化
-
+#### 开发说明
+开发阶段，在该项目的更目录下，创建python虚拟环境，执行python start.py即可启动
+虚拟环境安装
+```bash/cmd/powershell
+python -m venv .venv
+```
 #### Software Architecture
 Software architecture description
 
