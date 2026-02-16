@@ -1,5 +1,6 @@
 from flask import Blueprint, redirect, url_for,request,render_template
-import db
+from dao.student_dao import *
+from db import get_db
 students_bp = Blueprint('students',__name__)
 
 @students_bp.route('/students')
@@ -9,15 +10,17 @@ def index():
     name_nick = request.args.get('name_nick','').strip()
     school = request.args.get('school','').strip()
     gender  = request.args.get('gender','').strip()
-    print("Received gender:", repr(gender))  # 查看终端输出
+    # print("Received gender:", repr(gender))  # 查看终端输出
 
     # 调用通用查询函数
-    students = db.search_students(
-        legal_name = name_id or None,
-        display_name = name_nick or None,
-        # school = school or None,
-        gender = gender or None
-    )
+    with get_db() as conn:
+        students = search_students(
+            conn,
+            legal_name = name_id or None,
+            display_name = name_nick or None,
+            # school = school or None,
+            gender = gender or None
+        )
 
     # 将当前筛选条件返回模板，用于保持表单值
     filters = {

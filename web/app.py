@@ -1,20 +1,19 @@
-# web/app.py
-from flask import Flask, jsonify
+# app.py
+from flask import Flask
+from .views.students import students_bp
+from .views.classes import classes_bp
+from .views.index import index_bp 
+from db import init_db  # 导入你写的数据库模块
 
 app = Flask(__name__)
-
-@app.route('/')
-def hello():
-    return "<h1>In-Class Snap API</h1><p>✅ Flask is running!</p>"
-
-@app.route('/api/status')
-def status():
-    return jsonify({
-        "status": "ok",
-        "module": "inclass-snap-web",
-        "version": "0.1.0"
-    })
+init_db()
+'''
+with app.app_context():
+    db.init_db()  # 自动初始化数据库
+'''
+app.register_blueprint(students_bp)
+app.register_blueprint(classes_bp)
+app.register_blueprint(index_bp)
 
 if __name__ == '__main__':
-    # 开发模式：允许外部访问（如手机、局域网）
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(debug=True)
