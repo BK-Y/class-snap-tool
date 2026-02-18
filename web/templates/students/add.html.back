@@ -3,6 +3,7 @@
 {% block title %}新增学员 - {{ super() }} {% endblock %}
 
 {% block content %}
+<h2> ➕ 新增学员 </h2>
 <style>
     /* 简单样式 */
     .form-container {
@@ -103,6 +104,11 @@
         padding: 15px;
     }
 </style>
+
+<div class="form-container">
+    <h2>添加学生</h2>
+    <p style="color: #666;">填写学生基本信息，学号将自动生成</p>
+
     <!-- 错误提示 -->
     {% if errors %}
     <div class="error-box">
@@ -126,36 +132,35 @@
 
     <form method="POST" action="{{ url_for('students.add_student') }}">
         
- <div class="form-container">
-    <h2>➕添加学生</h2>
-    <p style="color: #666;">学员基础信息收集</p>
-       <!-- 基本信息 -->
+        <!-- 基本信息 -->
         <div class="card">
             <div class="card-header">基本信息</div>
             <div class="card-body">
+                
                 <!-- 姓名（二选一必填） -->
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="display_name">常用称呼 <span class="required">*</span>  <small>日常使用的称呼</small></label>
+                        <label for="display_name">常用称呼 <span class="required">*</span></label>
                         <input type="text" 
                                id="display_name" 
                                name="display_name" 
                                value="{{ form_data.display_name if form_data else '' }}"
-                               placeholder="如：小明/ Henry">
+                               placeholder="如：小明">
+                        <small>日常使用的称呼</small>
                     </div>
-
                     <div class="form-group">
-                        <label for="legal_name">法定姓名 <span class="required">*</span><small>身份证件上的姓名</small></label>
+                        <label for="legal_name">法定姓名 <span class="required">*</span></label>
                         <input type="text" 
                                id="legal_name" 
                                name="legal_name" 
                                value="{{ form_data.legal_name if form_data else '' }}"
-							   placeholder="如：张小明">
+                               placeholder="如：张小明">
+                        <small>身份证上的姓名</small>
                     </div>
                 </div>
                 <div class="info-box">
-						<strong>注意：</strong> 常用称呼和法定姓名 <strong>至少填写一个</strong>
-				</div>
+                    <strong>注意：</strong> 常用称呼和法定姓名 <strong>至少填写一个</strong>
+                </div>
 
                 <!-- 性别 -->
                 <div class="form-row">
@@ -168,7 +173,6 @@
                             <option value="其他" {{ 'selected' if form_data and form_data.gender == '其他' else '' }}>其他</option>
                         </select>
                     </div>
-
                     <div class="form-group">
                         <label>隐私设置</label>
                         <div style="margin-top: 8px;">
@@ -177,57 +181,17 @@
                                    name="gender_private"
                                    {{ 'checked' if form_data and form_data.get('gender_private') else '' }}
                                    style="width: auto;">
-                            <label for="gender_private" style="display: inline; font-weight: normal;">公开性别信息</label>
+                            <label for="gender_private" style="display: inline; font-weight: normal;">不公开性别信息</label>
                         </div>
+                        <small>勾选后性别将不对外显示</small>
                     </div>
                 </div>
-
-				<!-- 出生日期 -->
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="birthday">出生日期</label>
-						<div style="display: flex; gap: 10px;">
-							<!-- 年 -->
-							<select name="birthday_year" style="flex: 1;">
-								<option value="">--</option>
-								{% for y in range(current_year-18,current_year-5) %}
-									<option value="{{ y }}" 
-										{{ 'selected' if form_data and form_data.birthday_year == y|string else '' }}>
-										{{ y }}
-									</option>
-								{% endfor %}
-							</select>年
-
-							<!-- 月 -->
-							<select name="birthday_month" style="flex: 1;">
-								<option value="">--</option>
-								{% for m in range(0, 13) %}
-									<option value="{{ '%02d' % m }}"
-										{{ 'selected' if form_data and form_data.birthday_month == '%02d' % m else '' }}>
-										{{ '%02d' % m }}
-									</option>
-								{% endfor %}
-							</select>月
-               
-							<!-- 日 -->
-							<select name="birthday_day" style="flex: 1;">
-								<option value="">--</option>
-								{% for d in range(0, 32) %}
-									<option value="{{ '%02d' % d }}"
-										{{ 'selected' if form_data and form_data.birthday_day == '%02d' % d else '' }}>
-										{{ '%02d' % d }}
-									</option>
-								{% endfor %}
-							</select>日
-						</div>
-					</div>
-				</div>
             </div>
         </div>
 
         <!-- 证件信息（可选） -->
         <div class="card">
-				<div class="card-header">证件信息 <small>(可选)</small></div>
+            <div class="card-header">证件信息 <span style="font-weight: normal; color: #666;">（可选）</span></div>
             <div class="card-body">
                 
                 <div class="form-row">
@@ -253,6 +217,17 @@
             </div>
         </div>
 
+        <!-- 学号说明 -->
+        <div class="card">
+            <div class="card-header">学号说明</div>
+            <div class="card-body">
+                <div class="info-box" style="margin-bottom: 0;">
+                    <strong>自动生成：</strong> 学号将由系统自动生成，无需手动填写<br>
+                    <strong>格式：</strong> YYYYMM + 4 位序号（如 2026020001）
+                </div>
+            </div>
+        </div>
+
         <!-- 提交按钮 -->
         <div style="text-align: right; margin-top: 20px;">
             <a href="{{ url_for('students.index') }}" class="btn btn-secondary">取消</a>
@@ -263,7 +238,6 @@
 
 <!-- 前端验证脚本 -->
 <script>
-		
 document.querySelector('form').addEventListener('submit', function(e) {
     var displayName = document.getElementById('display_name').value.trim();
     var legalName = document.getElementById('legal_name').value.trim();
@@ -274,19 +248,53 @@ document.querySelector('form').addEventListener('submit', function(e) {
         document.getElementById('display_name').focus();
     }
 });
+</script>
+
+<h2> backup </h2>
+
+<!-- templates/students/add.html -->
+<div class="form-group">
+    <label>学号</label>
+    <div class="input-group">
+        <input type="text" name="student_number" 
+               value="{{ form_data.student_number if form_data else '' }}" 
+               class="form-control" id="student_number">
+        <div class="input-group-append">
+            <label class="checkbox-inline" style="margin-left: 10px;">
+                <input type="checkbox" name="auto_number" id="auto_number"
+                       {{ 'checked' if form_data and form_data.get('auto_number') else '' }}
+                       onchange="toggleStudentNumber()"> 自动生成
+            </label>
+        </div>
+    </div>
+<script>
 function toggleStudentNumber() {
-    var auto = document.getElementById('auto_student_number');
-    var input = document.getElementById('student_number_input');
-    var preview = document.getElementById('student_number_preview');
-    
+    var auto = document.getElementById('auto_number');
+    var input = document.getElementById('student_number');
+    input.disabled = auto.checked;
     if (auto.checked) {
-        input.style.display = 'none';
-        preview.style.display = 'block';
+        input.value = '系统将自动生成';
+        input.readOnly = true;
     } else {
-        input.style.display = 'block';
-        preview.style.display = 'none';
+        input.value = '';
+        input.readOnly = false;
     }
 }
-
 </script>
+
+<h2> Old Version </h2>
+
+<form method = "POST">
+		<p><label> 姓名(证件)：<input type="text" name="name_id" required></label></p>
+		<p><label> 昵称：<input type="text" name="name_nick" required></label></p>
+		<p>
+			<label> 性别：</label><br>
+				<label><input type="radio" name="gender" value="男"> 男</label>
+				<label><input type="radio" name="gender" value="女"> 女</label>
+				<label><input type="radio" name="gender" value="其他"> 其他</label>
+		</p>
+		<p><label> 出生日期：<input type="date" name="birth_date"></label></p>
+		<p><label> 学校：<input type="text" name="school" ></label></p>
+		<p><button type="submit">提交</button><a href="{{ url_for('students.index') }}"> ← 返回列表</a></p>
+</form>
 {% endblock %}

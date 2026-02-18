@@ -1,81 +1,112 @@
 ﻿from typing import List, Dict, Any, Optional, Literal
 import sqlite3
+import datetime
+
+def generate_student_number(conn: sqlite3.Connection, prefix: str = "S") -> str:
+    """自动生成学号（年份 + 序号）"""
+    year = datetime.datetime.now().year
+    prefix_year = f"{prefix}{year}"
+    
+    cursor = conn.execute("""
+        SELECT student_number FROM students 
+        WHERE student_number LIKE ? 
+        ORDER BY student_number DESC 
+        LIMIT 1
+    """, (f"{prefix_year}%",))
+    
+    row = cursor.fetchone()
+    if row:
+        last_num = int(row['student_number'][-4:])
+        new_num = last_num + 1
+    else:
+        new_num = 1
+    
+    return f"{prefix_year}{new_num:04d}"
+
+def create_student(
+    conn: sqlite3.Connection,
+    student_number: str,
+    display_name: str,
+    legal_name: str,
+    doc_type: str,
+    doc_number: str,
+    gender: Optional[str] = None,
+    gender_private: bool = False,
+) -> int:
+    """创建学生记录"""
+    cursor = conn.execute("""
+        INSERT INTO students (
+            student_number, display_name, legal_name,
+            doc_type, doc_number, gender, gender_private
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (
+        student_number.strip(),
+        display_name.strip(),
+        legal_name.strip(),
+        doc_type.strip(),
+        doc_number.strip(),
+        gender.strip() if gender else None,
+        1 if gender_private else 0
+    ))
+    return cursor.lastrowid 
+   
 
 def search_students(
-    conn: sqlite3.Connection,
+   conn: sqlite3.Connection,
     *,
-    student_number: Optional[str] = None,
-    display_name: Optional[str] = None,
-    legal_name: Optional[str] = None,
-    doc_type: Optional[str] = None,
-    doc_number: Optional[str] = None,
-    gender: Optional[str] = None,
-    order_by: str = "display_name",
-    order_direction: Literal["ASC", "DESC"] = "ASC",
-    limit: Optional[int] = None,
-    offset: Optional[int] = None,
-) -> List[Dict[str, Any]]:
-    """
-    搜索学生（DAO 层：安全、参数化、类型化）
-    
-    Args:
-        conn: 数据库连接（由调用方提供）
-        student_number: 精确匹配学号
-        display_name: 模糊匹配常用称呼（不区分大小写）
-        legal_name: 模糊匹配法定姓名（不区分大小写）
-        doc_type/doc_number: 精确匹配证件
-        gender: 模糊匹配性别（不区分大小写）
-        order_by: 排序字段（id, student_number, display_name...）
-        limit/offset: 分页支持
-    
-    Returns:
-        List of student dicts (keys: id, student_number, display_name, gender, legal_name, doc_type, doc_number)
-    """
-    # 校验排序字段（防 SQL 注入）
-    allowed_order = {"id", "student_number", "display_name", "legal_name", "gender", "doc_type", "doc_number"}
-    if order_by not in allowed_order:
-        raise ValueError(f"order_by 必须是 {sorted(allowed_order)}, 得到 '{order_by}'")
-
+    student_id: int = None,
+    student_number: str = None,
+    display_name: str = None,
+    legal_name: str = None,
+    doc_type: str = None,
+    doc_number: str = None,
+    gender: str = None,
+    limit: int = None,
+    offset: int = None,
+) -> List[sqlite3.Row]:
+    """统一查询接口"""
     where_clauses = []
     params = []
-
-    def _add_clause(field: str, op: str, value: Any):
-        where_clauses.append(f"{field} {op} ?")
-        params.append(value)
-
-    # 精确匹配字段
-    if student_number and isinstance(student_number, str) and student_number.strip():
-        _add_clause("student_number", "=", student_number.strip())
-    if doc_type and isinstance(doc_type, str) and doc_type.strip():
-        _add_clause("doc_type", "=", doc_type.strip())
-    if doc_number and isinstance(doc_number, str) and doc_number.strip():
-        _add_clause("doc_number", "=", doc_number.strip())
-
-    # 模糊匹配（LOWER + LIKE，真正不区分大小写）
-    if display_name and isinstance(display_name, str) and display_name.strip():
-        _add_clause("LOWER(display_name)", "LIKE", f"%{display_name.strip().lower()}%")
-    if legal_name and isinstance(legal_name, str) and legal_name.strip():
-        _add_clause("LOWER(legal_name)", "LIKE", f"%{legal_name.strip().lower()}%")
-    if gender and isinstance(gender, str) and gender.strip():
-        _add_clause("LOWER(gender)", "LIKE", f"%{gender.strip().lower()}%")
-
-    # 构建 SQL
-    select_fields = ["id", "student_number", "display_name", "gender", "legal_name", "doc_type", "doc_number"]
-    sql = f"SELECT {', '.join(select_fields)} FROM students"
-
+    
+    if student_id is not None:
+        where_clauses.append("id = ?")
+        params.append(student_id)
+    
+    if student_number is not None:
+        where_clauses.append("student_number = ?")
+        params.append(student_number.strip())
+    
+    if display_name:
+        where_clauses.append("display_name LIKE ?")
+        params.append(f"%{display_name.strip()}%")
+    
+    if legal_name:
+        where_clauses.append("legal_name LIKE ?")
+        params.append(f"%{legal_name.strip()}%")
+    
+    if doc_type:
+        where_clauses.append("doc_type = ?")
+        params.append(doc_type.strip())
+    
+    if doc_number:
+        where_clauses.append("doc_number = ?")
+        params.append(doc_number.strip())
+    
+    if gender:
+        where_clauses.append("gender = ?")
+        params.append(gender.strip())
+    
+    sql = "SELECT * FROM students"
     if where_clauses:
         sql += " WHERE " + " AND ".join(where_clauses)
-
-    sql += f" ORDER BY {order_by} {order_direction}"
-
-    if limit is not None:
+    sql += " ORDER BY id"
+    
+    if limit:
         sql += " LIMIT ?"
         params.append(limit)
-    if offset is not None:
+    if offset:
         sql += " OFFSET ?"
         params.append(offset)
-
-    # 执行
-    cursor = conn.cursor()
-    cursor.execute(sql, params)
-    return [dict(row) for row in cursor.fetchall()]
+    
+    cursor = conn.execute(sql, params)
+    return cursor.fetchall() 

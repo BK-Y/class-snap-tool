@@ -6,6 +6,7 @@ from .views.index import index_bp
 from db import init_db  # 导入你写的数据库模块
 
 app = Flask(__name__)
+app.secret_key = "test"
 init_db()
 '''
 with app.app_context():

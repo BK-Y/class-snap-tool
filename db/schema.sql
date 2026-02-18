@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS students (
     gender_private BOOLEAN NOT NULL DEFAULT 0,				-- 是否选择公开
 
 
+
     -- 证件信息（法定，用于赛事报名等）
 	legal_name TEXT NOT NULL,
     doc_type TEXT NOT NULL,
