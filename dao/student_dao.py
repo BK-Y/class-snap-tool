@@ -2,7 +2,7 @@
 import sqlite3
 import datetime
 
-def generate_student_number(conn: sqlite3.Connection, prefix: str = "S") -> str:
+def generate_student_number(conn: sqlite3.Connection, prefix: str = "") -> str:
     """自动生成学号（年份 + 序号）"""
     year = datetime.datetime.now().year
     prefix_year = f"{prefix}{year}"
@@ -31,22 +31,20 @@ def create_student(
     doc_type: str,
     doc_number: str,
     gender: Optional[str] = None,
-    gender_private: bool = False,
 ) -> int:
     """创建学生记录"""
     cursor = conn.execute("""
         INSERT INTO students (
             student_number, display_name, legal_name,
-            doc_type, doc_number, gender, gender_private
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            doc_type, doc_number, gender
+        ) VALUES (?, ?, ?, ?, ?, ?)
     """, (
         student_number.strip(),
         display_name.strip(),
         legal_name.strip(),
         doc_type.strip(),
         doc_number.strip(),
-        gender.strip() if gender else None,
-        1 if gender_private else 0
+        gender.strip() 
     ))
     return cursor.lastrowid 
    
@@ -54,7 +52,6 @@ def create_student(
 def search_students(
    conn: sqlite3.Connection,
     *,
-    student_id: int = None,
     student_number: str = None,
     display_name: str = None,
     legal_name: str = None,
@@ -68,9 +65,6 @@ def search_students(
     where_clauses = []
     params = []
     
-    if student_id is not None:
-        where_clauses.append("id = ?")
-        params.append(student_id)
     
     if student_number is not None:
         where_clauses.append("student_number = ?")
