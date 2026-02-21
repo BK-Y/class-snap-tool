@@ -54,7 +54,6 @@ def add_student():
         doc_type = request.form.get('doc_type', '').strip()
         doc_number = request.form.get('doc_number', '').strip()
         gender = request.form.get('gender', '').strip() or None
-        gender_private = request.form.get('gender_private') == 'on'
         
         # 基础校验
         errors = []
@@ -83,7 +82,7 @@ def add_student():
                     return render_template('students/add.html',current_year=current_year, errors=errors, form_data=request.form)
                 
                 # 插入学生
-                student_id = create_student(
+                student_number = create_student(
                     conn,
                     student_number=student_number,
                     display_name=display_name,
@@ -91,7 +90,6 @@ def add_student():
                     doc_type=doc_type,
                     doc_number=doc_number,
                     gender=gender,
-                    gender_private=gender_private,
                 )
                 
                 conn.commit()
@@ -105,11 +103,11 @@ def add_student():
     
     return render_template('students/add.html', errors=[], form_data=None)
 
-@students_bp.route('/edit/<int:student_id>',methods=['GET','POST'])
-def edit_student(student_id):
-    with db.get_db_connection() as conn:
+@students_bp.route('/students/edit/<student_number>',methods=['GET','POST'])
+def edit_student(student_number):
+    with get_db() as conn:
         student = conn.execute(
-            "SELECT * FROM students WHERE id = ?",(student_id,)
+            "SELECT * FROM students WHERE student_number = ?",(student_number,)
             ).fetchone()
 
     if not student:
