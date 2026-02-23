@@ -11,6 +11,7 @@ def init_db():
 
     conn = sqlite3.connect(db_path)
     try:
+        print("读取中...")
         # 读取并执行 schema.sql（假设它在项目根目录）
         schema_file = Path(__file__).parent / "schema.sql"
         if not schema_file.exists():
@@ -20,16 +21,17 @@ def init_db():
             sql_content = f.read()
 
         # 清理注释和空行（防执行失败）
-        cleaned_sql = "\n".join(
-            line for line in sql_content.split("\n")
-            if line.strip() and not line.strip().startswith("--")
-        )
+        # cleaned_sql = "\n".join(
+        #    line for line in sql_content.split("\n")
+        #    if line.strip() and not line.strip().startswith("--")
+        #)
 
-        conn.executescript(cleaned_sql)
+        conn.executescript(sql_content)
         conn.commit()
         print(f"✅ 表结构初始化成功：{db_path}")
     except sqlite3.Error as e:
         print(f"❌ 建表失败：{e}")
         raise
     finally:
+        print("完毕")
         conn.close()
