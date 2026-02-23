@@ -25,7 +25,8 @@ CREATE TABLE IF NOT EXISTS students (
 -- ============================================
 -- 班级表 (classes)
 -- 存储班级/课程信息
--- ============================================-- 
+-- ============================================
+
 CREATE TABLE IF NOT EXISTS classes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,         -- 班级 id
     type TEXT NOT NULL,                           -- 班级类型 (如：钢琴/舞蹈/绘画)
@@ -90,23 +91,21 @@ CREATE TABLE IF NOT EXISTS learning_records (
 
 -- 索引 1：快速查询某个学生的所有记录 (最常用)
 -- 场景：打开学生详情页，查看该学生全部学习历史
-CREATE INDEX idx_record_student ON learning_records(student_id);
-
+CREATE INDEX IF NOT EXISTS idx_record_student ON learning_records(student_id);
 -- 索引 2：快速查询某个学生某学年的记录
 -- 场景：生成学生学年报告，如"张三 2023-2024 学年表现"
-CREATE INDEX idx_record_student_year ON learning_records(student_id, academic_year);
-
+CREATE INDEX IF NOT EXISTS idx_record_student_year ON learning_records(student_id, academic_year);
 -- 索引 3：快速查询某个班级某学年的记录
 -- 场景：生成班级整体统计，如"钢琴初级 1 班 2023-2024 学年平均成绩"
-CREATE INDEX idx_record_class_year ON learning_records(class_id, academic_year);
+CREATE INDEX IF NOT EXISTS idx_record_class_year ON learning_records(class_id, academic_year);
 
 -- 索引 4：按时间排序查询
 -- 场景：查看最新记录，或按时间线展示
-CREATE INDEX idx_record_time ON learning_records(created_at);
+CREATE INDEX IF NOT EXISTS idx_record_time ON learning_records(created_at);
 
 -- 索引 5：复合索引 - 班级 + 学年 + 时间
 -- 场景：生成班级学期报告，按时间顺序展示所有学生记录
-CREATE INDEX idx_record_class_year_time ON learning_records(class_id, academic_year, created_at);
+CREATE INDEX IF NOT EXISTS idx_record_class_year_time ON learning_records(class_id, academic_year, created_at);
 
 -- ============================================
 -- 5. 学生操作日志表 (student_operation_logs)
@@ -128,7 +127,7 @@ CREATE TABLE IF NOT EXISTS student_operation_logs (
     old_value TEXT,                               -- 修改前的内容 (新增时为 NULL)
     new_value TEXT,                               -- 修改后的内容
     
-    remark TEXT                                   -- 备注 (可选，如"修正录入错误"、"家长要求修改")
+    remark TEXT,                                   -- 备注 (可选，如"修正录入错误"、"家长要求修改")
     
     -- 外键约束：学生删除时，日志级联删除
     FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
@@ -141,11 +140,11 @@ CREATE TABLE IF NOT EXISTS student_operation_logs (
 
 -- 索引 1：快速查找某个学生的所有操作记录
 -- 场景：查看"张三"的所有信息修改历史
-CREATE INDEX idx_log_student_id ON student_operation_logs(student_id);
+CREATE INDEX IF NOT EXISTS idx_log_student_id ON student_operation_logs(student_id);
 
 -- 索引 2：快速按时间筛选/排序
 -- 场景：查看"最近 10 条操作"或"2024 年 1 月的所有修改"
-CREATE INDEX idx_log_time ON student_operation_logs(operation_time);
+CREATE INDEX IF NOT EXISTS idx_log_time ON student_operation_logs(operation_time);
 
 -- ============================================
 -- 设计说明总结
