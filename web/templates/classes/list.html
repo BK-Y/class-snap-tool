@@ -1,1 +1,36 @@
-hello world
+{% extends "base.html" %}
+
+{% block title %}班级管理 - {{ super() }}{% endblock %}
+
+{% block content %}
+<h2>班级管理</h2>
+
+{% if classes %}
+<table>
+	<thead>
+		<tr>
+			<th>ID</th>
+			<th>类型</th>
+			<th>级别</th>
+			<th>期数</th>
+			<th>状态</th>
+		</tr>
+	</thead>
+	<tbody>
+		{% for c in classes %}
+		<tr>
+			<td>{{ c.id }}</td>
+			<td>{{ c.type }}</td>
+			<td>{{ c.level }}</td>
+			<td>{{ c.group_number }}</td>
+			<td>{{ c.status }}</td>
+		</tr>
+		{% endfor %}
+	</tbody>
+</table>
+{% else %}
+<p>📭 暂无班级数据</p>
+{% endif %}
+
+<p><a href="{{ url_for('index.index') }}">← 返回首页</a></p>
+{% endblock %}

@@ -1,6 +1,13 @@
-﻿from typing import List, Dict, Any, Optional, Literal
+﻿from typing import List, Optional
 import sqlite3
 import datetime
+
+
+def _clean_optional(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    cleaned = value.strip()
+    return cleaned or None
 
 def generate_student_number(conn: sqlite3.Connection, prefix: str = "") -> str:
     """自动生成学号（年份 + 序号）"""
@@ -28,29 +35,73 @@ def create_student(
     student_number: str,
     display_name: str,
     legal_name: str,
-    doc_type: str,
-    doc_number: str,
+    doc_type: Optional[str],
+    doc_number: Optional[str],
     gender: Optional[str] = None,
+    birthday: Optional[str] = None,
 ) -> int:
     """创建学生记录"""
+    student_number_value = student_number.strip()
+    doc_type_value = _clean_optional(doc_type) or "OTHER"
+    doc_number_value = _clean_optional(doc_number) or f"AUTO-{student_number_value}"
+
     cursor = conn.execute("""
         INSERT INTO students (
             student_number, display_name, legal_name,
-            doc_type, doc_number, gender
-        ) VALUES (?, ?, ?, ?, ?, ?)
+            doc_type, doc_number, gender, birthday
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
     """, (
-        student_number.strip(),
+        student_number_value,
         display_name.strip(),
         legal_name.strip(),
-        doc_type.strip(),
-        doc_number.strip(),
-        gender.strip() 
+        doc_type_value,
+        doc_number_value,
+        _clean_optional(gender),
+        _clean_optional(birthday),
     ))
-    return cursor.lastrowid 
-   
+    return cursor.lastrowid
+
+
+def update_student(
+    conn: sqlite3.Connection,
+    student_number: str,
+    *,
+    display_name: str,
+    legal_name: str,
+    gender: Optional[str] = None,
+    birthday: Optional[str] = None,
+    doc_type: Optional[str] = None,
+    doc_number: Optional[str] = None,
+) -> None:
+    """按学号更新学生信息"""
+    student_number_value = student_number.strip()
+    doc_type_value = _clean_optional(doc_type) or "OTHER"
+    doc_number_value = _clean_optional(doc_number) or f"AUTO-{student_number_value}"
+
+    conn.execute(
+        """
+        UPDATE students
+        SET display_name = ?,
+            legal_name = ?,
+            gender = ?,
+            birthday = ?,
+            doc_type = ?,
+            doc_number = ?
+        WHERE student_number = ?
+        """,
+        (
+            display_name.strip(),
+            legal_name.strip(),
+            _clean_optional(gender),
+            _clean_optional(birthday),
+            doc_type_value,
+            doc_number_value,
+            student_number_value,
+        ),
+    )
 
 def search_students(
-   conn: sqlite3.Connection,
+    conn: sqlite3.Connection,
     *,
     student_number: str = None,
     display_name: str = None,
