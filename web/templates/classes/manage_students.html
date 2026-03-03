@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}班级学员管理 - {{ super() }}{% endblock %}
+
+{% block content %}
+<h2>班级学员管理</h2>
+<p>班级：{{ class_item.type }} / {{ class_item.level }} / 第{{ class_item.group_number }}期</p>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <ul>
+            {% for category, message in messages %}
+            <li>{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+{% endwith %}
+
+<h3>已加入班级的学员</h3>
+{% if enrolled_students %}
+<table>
+    <thead>
+        <tr>
+            <th>学号</th>
+            <th>法定姓名</th>
+            <th>常用称呼</th>
+            <th>性别</th>
+            <th>报名时间</th>
+            <th>离班原因</th>
+            <th>操作</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for s in enrolled_students %}
+        <tr>
+            <td>{{ s.student_number }}</td>
+            <td>{{ s.legal_name }}</td>
+            <td>{{ s.display_name }}</td>
+            <td>{{ s.gender or '—' }}</td>
+            <td>{{ s.enrolled_at }}</td>
+            <td>
+                <form method="POST" action="{{ url_for('classes.manage_class_students', class_id=class_item.id) }}">
+                    <input type="hidden" name="action" value="remove">
+                    <input type="hidden" name="student_id" value="{{ s.id }}">
+                    <input type="hidden" name="operator_id" value="web-admin">
+                    <input type="text" name="reason" placeholder="可选：离班原因">
+                    <button type="submit">移出班级</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>暂无学员加入该班级。</p>
+{% endif %}
+
+<h3>可加入学员</h3>
+{% if available_students %}
+<table>
+    <thead>
+        <tr>
+            <th>学号</th>
+            <th>法定姓名</th>
+            <th>常用称呼</th>
+            <th>性别</th>
+            <th>入班备注</th>
+            <th>操作</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for s in available_students %}
+        <tr>
+            <td>{{ s.student_number }}</td>
+            <td>{{ s.legal_name }}</td>
+            <td>{{ s.display_name }}</td>
+            <td>{{ s.gender or '—' }}</td>
+            <td>
+                <form method="POST" action="{{ url_for('classes.manage_class_students', class_id=class_item.id) }}">
+                    <input type="hidden" name="action" value="enroll">
+                    <input type="hidden" name="student_id" value="{{ s.id }}">
+                    <input type="hidden" name="operator_id" value="web-admin">
+                    <input type="text" name="reason" placeholder="可选：入班备注">
+                    <button type="submit">加入班级</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>暂无可加入学员。</p>
+{% endif %}
+
+<h3>最近操作日志（50条）</h3>
+{% if enrollment_logs %}
+<table>
+    <thead>
+        <tr>
+            <th>时间</th>
+            <th>事件</th>
+            <th>学员快照</th>
+            <th>操作人</th>
+            <th>来源</th>
+            <th>请求ID</th>
+            <th>备注</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for log in enrollment_logs %}
+        <tr>
+            <td>{{ log.event_time }}</td>
+            <td>{{ log.event_type }}</td>
+            <td>{{ log.student_number_snapshot }} / {{ log.student_name_snapshot }}</td>
+            <td>{{ log.operator_id }}</td>
+            <td>{{ log.source or 'web' }}</td>
+            <td>{{ log.request_id or '—' }}</td>
+            <td>{{ log.reason or '—' }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>暂无操作日志。</p>
+{% endif %}
+
+<p><a href="{{ url_for('classes.list_classes') }}">← 返回班级列表</a></p>
+{% endblock %}

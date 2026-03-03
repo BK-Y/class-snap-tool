@@ -56,6 +56,38 @@ CREATE TABLE IF NOT EXISTS enrollments (
 );
 
 -- ============================================
+-- 报名事件日志表 (enrollment_logs)
+-- 记录学员进出班级历史（用于审计与数据分析）
+-- ============================================
+CREATE TABLE IF NOT EXISTS enrollment_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    student_id INTEGER NOT NULL,
+    class_id INTEGER NOT NULL,
+    event_type TEXT NOT NULL,                     -- JOIN / LEAVE
+    event_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    operator_id TEXT NOT NULL,                    -- 谁操作
+    reason TEXT,                                  -- 原因（可选）
+    source TEXT DEFAULT 'web',                    -- 来源：web/import/api
+    request_id TEXT,                              -- 请求追踪ID（可选）
+
+    -- 快照字段（避免学员改名/改号后历史难读）
+    student_number_snapshot TEXT,
+    student_name_snapshot TEXT,
+
+    FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+    FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
+
+    CHECK (event_type IN ('JOIN', 'LEAVE'))
+);
+
+-- 报名日志常用索引
+CREATE INDEX IF NOT EXISTS idx_enrollment_log_class_time ON enrollment_logs(class_id, event_time);
+CREATE INDEX IF NOT EXISTS idx_enrollment_log_student_time ON enrollment_logs(student_id, event_time);
+CREATE INDEX IF NOT EXISTS idx_enrollment_log_request_id ON enrollment_logs(request_id);
+
+-- ============================================
 -- 课堂记录表 (learning_records)
 -- 存储学生的课堂表现、考勤、作业、考试等记录
 -- ============================================
