@@ -8,6 +8,13 @@ from dao.student_dao import (
     generate_student_number,
     search_students,
     update_student,
+    list_student_documents,  # 新增导入
+    add_student_document,
+    update_student_document,
+    delete_student_document,
+    set_primary_document,
+    list_doc_types,
+    add_doc_type,
 )
 from db import get_db
 
@@ -47,6 +54,18 @@ def _build_birthday_from_form(form):
     birthday = (form.get("birthday") or "").strip()
     return birthday or None
 
+
+def _split_birthday_for_form(birthday_value):
+    if not birthday_value:
+        return "", "", ""
+
+    parts = birthday_value.split("-")
+    if len(parts) != 3:
+        return "", "", ""
+
+    year, month, day = (parts[0].strip(), parts[1].strip(), parts[2].strip())
+    return year, month, day
+
 @students_bp.route('/students')
 def index():
     # 从URL查询参数获取筛选数据
@@ -61,18 +80,23 @@ def index():
             conn,
             legal_name = name_id or None,
             display_name = name_nick or None,
-            # school = school or None,
             gender = gender or None
         )
-
-    # 将当前筛选条件返回模板，用于保持表单值
+        # 查询每个学生的主证件
+        student_list = []
+        for stu in students:
+            docs = list_student_documents(conn, stu['id'])
+            main_doc = docs[0] if docs else None
+            student_list.append({
+                **dict(stu),
+                'main_doc': main_doc
+            })
     filters = {
         'name_id':name_id,
         'name_nick':name_nick,
         'gender':gender
     }
-    # 调用你写的函数，获取所有活跃学员
-    return render_template('/students/view_students.html', students=students,filters=filters)
+    return render_template('/students/view_students.html', students=student_list, filters=filters)
 
 @students_bp.route('/students/add',methods=['GET','POST'])
 def add_student():
@@ -146,6 +170,11 @@ def add_student():
 
 @students_bp.route('/students/edit/<student_number>',methods=['GET','POST'])
 def edit_student(student_number):
+    current_year = datetime.now().year
+    # 保持 POST 行为以兼容旧表单提交，但 GET 直接重定向到新的详情/编辑页
+    if request.method == 'GET':
+        return redirect(url_for('students.student_detail', student_number=student_number))
+
     with get_db() as conn:
         student = conn.execute(
             "SELECT * FROM students WHERE student_number = ?",(student_number,)
@@ -154,11 +183,25 @@ def edit_student(student_number):
     if not student:
         return "学员不存在",404
 
+    birthday_year, birthday_month, birthday_day = _split_birthday_for_form(student["birthday"])
+    default_form_data = {
+        "student_number": student["student_number"],
+        "display_name": student["display_name"] or "",
+        "legal_name": student["legal_name"] or "",
+        "gender": student["gender"] or "",
+        "birthday": student["birthday"] or "",
+        "birthday_year": birthday_year,
+        "birthday_month": birthday_month,
+        "birthday_day": birthday_day,
+        "doc_type": student["doc_type"] or "",
+        "doc_number": student["doc_number"] or "",
+    }
+
     if request.method == 'POST':
         display_name = request.form.get("display_name", "").strip()
         legal_name = request.form.get("legal_name", "").strip()
         gender = request.form.get("gender", "").strip() or None
-        birthday = (request.form.get("birthday") or "").strip() or None
+        birthday = _build_birthday_from_form(request.form)
         doc_type = request.form.get("doc_type", "").strip()
         doc_number = request.form.get("doc_number", "").strip()
 
@@ -168,8 +211,21 @@ def edit_student(student_number):
         if not legal_name:
             errors.append("法定姓名不能为空")
 
+        if not birthday and (
+            request.form.get("birthday_year")
+            or request.form.get("birthday_month")
+            or request.form.get("birthday_day")
+        ):
+            errors.append("出生日期无效")
+
         if errors:
-            return render_template("edit.html", student=student, errors=errors)
+            return render_template(
+                "edit.html",
+                student=student,
+                errors=errors,
+                form_data=request.form,
+                current_year=current_year,
+            )
 
         try:
             with get_db() as conn:
@@ -188,9 +244,118 @@ def edit_student(student_number):
             flash("学员信息更新成功", "success")
             return redirect(url_for("students.index"))
         except sqlite3.IntegrityError as e:
-            return render_template("edit.html", student=student, errors=[f"数据库错误：{e}"])
+            return render_template(
+                "edit.html",
+                student=student,
+                errors=[f"数据库错误：{e}"],
+                form_data=request.form,
+                current_year=current_year,
+            )
 
     # GET 请求：显示编辑表单，雨天当前值
-    return render_template('edit.html',student=student)
+    return render_template(
+        'edit.html',
+        student=student,
+        form_data=default_form_data,
+        current_year=current_year,
+    )
+
+@students_bp.route('/students/detail/<student_number>', methods=['GET', 'POST'])
+def student_detail(student_number):
+    current_year = datetime.now().year
+    with get_db() as conn:
+        student = conn.execute(
+            "SELECT * FROM students WHERE student_number = ?", (student_number,)
+        ).fetchone()
+        if not student:
+            return "学员不存在", 404
+        documents = list_student_documents(conn, student['id'])
+        # load types for use in page (will refresh after modifications below)
+        doc_types = []
+        if request.method == 'POST':
+            action = request.form.get('action')
+            if action == 'edit_basic':
+                display_name = request.form.get('display_name', '').strip()
+                legal_name = request.form.get('legal_name', '').strip()
+                gender = request.form.get('gender', '').strip() or None
+                birthday = request.form.get('birthday', '').strip() or None
+                if display_name and legal_name:
+                    update_student(
+                        conn,
+                        student_number=student_number,
+                        display_name=display_name,
+                        legal_name=legal_name,
+                        gender=gender,
+                        birthday=birthday,
+                    )
+                    conn.commit()
+                    # 刷新 student
+                    student = conn.execute(
+                        "SELECT * FROM students WHERE student_number = ?", (student_number,)
+                    ).fetchone()
+            elif action == 'add_doc':
+                doc_type = request.form.get('doc_type', '').strip()
+                doc_number = request.form.get('doc_number', '').strip()
+                # new requirement: every new document becomes primary
+                is_primary = True
+                if doc_type and doc_number:
+                    # ensure doc_type exists in doc_types table
+                    try:
+                        label = doc_type
+                        if doc_type.startswith('PASSPORT-'):
+                            country = doc_type.split('-',1)[1]
+                            label = f'护照-{country}'
+                        add_doc_type(conn, doc_type, label)
+                    except Exception:
+                        pass
+                    add_student_document(conn, student['id'], doc_type, doc_number, is_primary)
+                    conn.commit()
+            elif action == 'delete_doc':
+                doc_id = request.form.get('doc_id')
+                if doc_id:
+                    delete_student_document(conn, int(doc_id))
+                    conn.commit()
+            elif action == 'set_primary':
+                doc_id = request.form.get('doc_id')
+                if doc_id:
+                    set_primary_document(conn, int(doc_id))
+                    conn.commit()
+            elif action == 'update_doc':
+                doc_id = request.form.get('doc_id')
+                doc_type = request.form.get('doc_type','').strip()
+                doc_number = request.form.get('doc_number','').strip()
+                if doc_id and doc_type and doc_number:
+                    try:
+                        update_student_document(conn, int(doc_id), doc_type, doc_number, False)
+                        conn.commit()
+                    except sqlite3.IntegrityError:
+                        flash('同类型证件已存在，无法修改', 'error')
+            # 操作后刷新数据
+            documents = list_student_documents(conn, student['id'])
+            # 操作后重新读取证件类型
+            doc_types = [dict(r) for r in list_doc_types(conn)]
+    birthday_year, birthday_month, birthday_day = _split_birthday_for_form(student["birthday"])
+    default_form_data = {
+        "student_number": student["student_number"],
+        "display_name": student["display_name"] or "",
+        "legal_name": student["legal_name"] or "",
+        "gender": student["gender"] or "",
+        "birthday": student["birthday"] or "",
+        "birthday_year": birthday_year,
+        "birthday_month": birthday_month,
+        "birthday_day": birthday_day,
+    }
+    # ensure types loaded even on GET
+    if not doc_types:
+        with get_db() as conn2:
+            doc_types = [dict(r) for r in list_doc_types(conn2)]
+    return render_template(
+        "students/detail.html",
+        student=student,
+        documents=documents,
+        doc_types=doc_types,
+        form_data=default_form_data,
+        current_year=current_year,
+    )
 
 

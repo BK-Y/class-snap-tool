@@ -42,7 +42,7 @@ def create_student(
 ) -> int:
     """创建学生记录"""
     student_number_value = student_number.strip()
-    doc_type_value = _clean_optional(doc_type) or "OTHER"
+    doc_type_value = _clean_optional(doc_type) or ""
     doc_number_value = _clean_optional(doc_number) or f"AUTO-{student_number_value}"
 
     cursor = conn.execute("""
@@ -75,7 +75,7 @@ def update_student(
 ) -> None:
     """按学号更新学生信息"""
     student_number_value = student_number.strip()
-    doc_type_value = _clean_optional(doc_type) or "OTHER"
+    doc_type_value = _clean_optional(doc_type) or ""
     doc_number_value = _clean_optional(doc_number) or f"AUTO-{student_number_value}"
 
     conn.execute(
@@ -154,4 +154,85 @@ def search_students(
         params.append(offset)
     
     cursor = conn.execute(sql, params)
-    return cursor.fetchall() 
+    return cursor.fetchall()
+
+
+def add_student_document(conn: sqlite3.Connection, student_id: int, doc_type: str, doc_number: str, is_primary: bool = False) -> int:
+    """为学生添加证件，若 is_primary=True，自动取消其他主证件"""
+    if is_primary:
+        conn.execute(
+            "UPDATE student_documents SET is_primary=0 WHERE student_id=?",
+            (student_id,)
+        )
+    cursor = conn.execute(
+        """
+        INSERT INTO student_documents (student_id, doc_type, doc_number, is_primary)
+        VALUES (?, ?, ?, ?)
+        """,
+        (student_id, doc_type.strip(), doc_number.strip(), int(is_primary))
+    )
+    return cursor.lastrowid
+
+def update_student_document(conn: sqlite3.Connection, doc_id: int, doc_type: str, doc_number: str, is_primary: bool = False) -> None:
+    """更新证件信息，若 is_primary=True，自动取消其他主证件"""
+    student_id = conn.execute("SELECT student_id FROM student_documents WHERE id=?", (doc_id,)).fetchone()[0]
+    if is_primary:
+        conn.execute(
+            "UPDATE student_documents SET is_primary=0 WHERE student_id=?",
+            (student_id,)
+        )
+    conn.execute(
+        """
+        UPDATE student_documents
+        SET doc_type=?, doc_number=?, is_primary=?
+        WHERE id=?
+        """,
+        (doc_type.strip(), doc_number.strip(), int(is_primary), doc_id)
+    )
+
+def delete_student_document(conn: sqlite3.Connection, doc_id: int) -> None:
+    """删除指定证件"""
+    conn.execute("DELETE FROM student_documents WHERE id=?", (doc_id,))
+
+def list_student_documents(conn: sqlite3.Connection, student_id: int) -> list:
+    """获取学生所有证件，主证件优先"""
+    cursor = conn.execute(
+        "SELECT * FROM student_documents WHERE student_id=? ORDER BY is_primary DESC, id ASC",
+        (student_id,)
+    )
+    return cursor.fetchall()
+
+# =================================================================
+# 证件类型相关
+# =================================================================
+
+def list_doc_types(conn: sqlite3.Connection) -> list:
+    """返回所有证件类型记录，作为字典列表"""
+    cursor = conn.execute("SELECT type_code,label FROM doc_types ORDER BY id")
+    return cursor.fetchall()
+
+
+def add_doc_type(conn: sqlite3.Connection, type_code: str, label: str) -> int:
+    """如果类型不存在则添加并返回 id，否则返回已有 id"""
+    type_code = type_code.strip()
+    label = label.strip()
+    if not type_code or not label:
+        raise ValueError("类型和标签不能为空")
+    cur = conn.execute("SELECT id FROM doc_types WHERE type_code=?", (type_code,))
+    row = cur.fetchone()
+    if row:
+        return row[0]
+    cursor = conn.execute(
+        "INSERT INTO doc_types (type_code,label) VALUES (?,?)",
+        (type_code, label)
+    )
+    return cursor.lastrowid
+
+def set_primary_document(conn: sqlite3.Connection, doc_id: int) -> None:
+    """将指定证件设为主证件（自动取消其他主证件）"""
+    row = conn.execute("SELECT student_id FROM student_documents WHERE id=?", (doc_id,)).fetchone()
+    if not row:
+        raise ValueError("证件不存在")
+    student_id = row[0]
+    conn.execute("UPDATE student_documents SET is_primary=0 WHERE student_id=?", (student_id,))
+    conn.execute("UPDATE student_documents SET is_primary=1 WHERE id=?", (doc_id,))

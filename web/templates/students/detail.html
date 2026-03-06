@@ -1,0 +1,547 @@
+{% extends 'base.html' %}
+
+{% block title %}学员详情/编辑 - {{ super() }} {% endblock %}
+
+{% block content %}
+<h2>学员详情<u>{{ student.student_number }}</u></h2>
+
+<style>
+	.field-row {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin: 10px 0;
+	}
+	.field-row label {
+		min-width: 90px;
+	}
+	.field-value {
+		min-width: 220px;
+		padding: 6px 8px;
+		border: 1px solid #ddd;
+		background: #fafafa;
+	}
+	#edit_modal {
+		display: none;
+		position: fixed;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.35);
+		align-items: center;
+		justify-content: center;
+	}
+	#edit_modal .modal-box {
+		background: #fff;
+		padding: 16px;
+		width: 360px;
+		border-radius: 6px;
+	}
+	#edit_modal .modal-actions {
+		margin-top: 12px;
+		display: flex;
+		justify-content: flex-end;
+		gap: 8px;
+	}
+	#edit_modal input,
+	#edit_modal select {
+		width: 100%;
+		padding: 6px;
+		box-sizing: border-box;
+	}
+	#add_doc_modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35); align-items: center; justify-content: center; }
+	#add_doc_modal .modal-box { background: #fff; padding: 16px; width: 360px; border-radius: 6px; }
+</style>
+
+<form method="POST" id="basic_form">
+	<input type="hidden" name="action" value="edit_basic">
+	<input type="hidden" name="legal_name" id="input_legal_name" value="{{ student.legal_name }}">
+	<input type="hidden" name="display_name" id="input_display_name" value="{{ student.display_name }}">
+	<input type="hidden" name="gender" id="input_gender" value="{{ student.gender }}">
+	<input type="hidden" name="birthday" id="input_birthday" value="{{ student.birthday or '' }}">
+
+	<div class="field-row">
+		<label>学号：</label>
+		<div class="field-value">{{ student.student_number }}</div>
+	</div>
+	<div class="field-row">
+		<label>法定姓名：</label>
+		<div class="field-value" id="view_legal_name">{{ student.legal_name }}</div>
+		<button type="button" onclick="openEditModal('legal_name', '法定姓名', 'text')">编辑</button>
+	</div>
+	<div class="field-row">
+		<label>常用称呼：</label>
+		<div class="field-value" id="view_display_name">{{ student.display_name }}</div>
+		<button type="button" onclick="openEditModal('display_name', '常用称呼', 'text')">编辑</button>
+	</div>
+	<div class="field-row">
+		<label>性别：</label>
+		<div class="field-value" id="view_gender">{{ student.gender or '—' }}</div>
+		<button type="button" onclick="openEditModal('gender', '性别', 'select', [{value:'',label:'请选择'},{value:'男',label:'男'},{value:'女',label:'女'},{value:'其他',label:'其他'}])">编辑</button>
+	</div>
+	<div class="field-row">
+		<label>出生日期：</label>
+		<div class="field-value" id="view_birthday">{{ student.birthday or '—' }}</div>
+		<button type="button" onclick="openEditModal('birthday', '出生日期', 'birthday', null, '改为：请选择年月日（月份/日期可选 00 表示未提供）')">编辑</button>
+	</div>
+
+<!-- 证件信息块开始 -->
+<h3 id="documents_section">证件信息 <button type="button" onclick="openAddDocModal()" style="font-size:0.8em;">添加证件</button></h3>
+{% if documents and documents|length > 0 %}
+<table border="1" cellpadding="6" style="margin-bottom: 1em;">
+    <tr>
+        <th>类型</th>
+        <th>号码</th>
+        <th>主证件</th>
+        <th>操作</th>
+    </tr>
+    {% for doc in documents %}
+    <tr>
+        <td>{{ {'ID_CARD': '身份证', 'HMT_PASS': '港澳台通行证', 'PASSPORT': '护照', 'OTHER': '其他'}.get(doc['doc_type'], doc['doc_type']) }}</td>
+        <td>{{ doc['doc_number'] }}</td>
+        <td>{% if doc['is_primary'] %}✔ 主证件{% endif %}</td>
+        <td>
+            <button type="button" onclick="openEditDocModal({{ doc['id'] }}, '{{ doc['doc_type'] }}', '{{ doc['doc_number'] }}')">编辑</button>
+            <form method="post" style="display:inline;">
+                <input type="hidden" name="action" value="set_primary">
+                <input type="hidden" name="doc_id" value="{{ doc['id'] }}">
+                {% if not doc['is_primary'] %}
+                <button type="submit">设为主证件</button>
+                {% endif %}
+            </form>
+            <form method="post" style="display:inline;">
+                <input type="hidden" name="action" value="delete_doc">
+                <input type="hidden" name="doc_id" value="{{ doc['id'] }}">
+                <button type="submit" onclick="return confirm('确定删除该证件？')">删除</button>
+            </form>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+<p style="color:#888;">暂无证件信息</p>
+{% endif %}
+<!-- 证件信息块结束 -->
+
+<!-- 添加证件弹窗 -->
+<div id="add_doc_modal">
+	<div class="modal-box">
+		<h3>添加证件</h3>
+		<div style="margin:10px 0;">
+			<label>类型：</label>
+			<div id="add_doc_type_group" style="display:flex;gap:4px;flex-wrap:wrap;">
+                <button type="button" class="doc-type-btn" data-value="ID_CARD">身份证</button>
+                <button type="button" class="doc-type-btn" data-value="HMT_PASS">回乡证</button>
+                <button type="button" class="doc-type-btn" data-value="PASSPORT">护照</button>
+                <button type="button" id="more_types_btn">更多…</button>
+            </div>
+            <input type="hidden" id="add_doc_type" value="ID_CARD">
+		</div>
+		<div style="margin:10px 0;">
+			<label>号码：</label>
+			<input id="add_doc_number" maxlength="32">
+		</div>
+		<!-- 默认设置为主证件 -->
+		<input type="hidden" id="add_doc_is_primary" value="on">
+		<div class="modal-actions">
+			<button type="button" onclick="closeAddDocModal()">取消</button>
+			<button type="button" onclick="submitAddDocModal()">确定</button>
+		</div>
+	</div>
+</div>
+
+<p id="save_btn_row"><button type="submit">保存基础信息</button> <a href="{{ url_for('students.index') }}">← 返回列表</a></p>
+</form>
+
+<div id="edit_modal">
+	<div class="modal-box">
+		<h3 id="modal_title">编辑</h3>
+		<p id="modal_hint" style="margin: 8px 0; color: #666;"></p>
+		<div id="modal_input_wrap"></div>
+		<div class="modal-actions">
+			<button type="button" onclick="closeEditModal()">取消</button>
+			<button type="button" onclick="saveEditModal()">确定</button>
+		</div>
+	</div>
+</div>
+
+<script>
+// ...edit.html 的 openEditModal、closeEditModal、saveEditModal、toDocTypeLabel 逻辑完全复用...
+let editingField = null;
+let editingType = null;
+const CURRENT_YEAR = new Date().getFullYear();
+// all document types loaded from server for client-side UI logic
+const all_types = {{ doc_types|tojson }};  // array of {type_code,description,label}
+
+function openEditModal(fieldName, label, inputType, options, customHint) {
+	editingField = fieldName;
+	editingType = inputType;
+	const hidden = document.getElementById('input_' + fieldName);
+	const currentValue = hidden ? hidden.value : '';
+	document.getElementById('modal_title').textContent = '编辑' + label;
+	let displayCurrentValue = currentValue || '—';
+	document.getElementById('modal_hint').textContent = customHint || ('当前值：' + displayCurrentValue + '；改为：');
+	const wrap = document.getElementById('modal_input_wrap');
+	wrap.innerHTML = '';
+	if (inputType === 'birthday') {
+		const values = (currentValue || '').split('-');
+		const currentYear = values.length === 3 ? values[0] : '';
+		const currentMonth = values.length === 3 ? values[1] : '';
+		const currentDay = values.length === 3 ? values[2] : '';
+		const yearSelect = document.createElement('select');
+		yearSelect.id = 'modal_birthday_year';
+		const yearEmpty = document.createElement('option');
+		yearEmpty.value = '';
+		yearEmpty.textContent = '-- 年 --';
+		yearSelect.appendChild(yearEmpty);
+		for (let y = CURRENT_YEAR - 18; y <= CURRENT_YEAR - 6; y++) {
+			const option = document.createElement('option');
+			option.value = String(y);
+			option.textContent = String(y);
+			if (String(y) === currentYear) {
+				option.selected = true;
+			}
+			yearSelect.appendChild(option);
+		}
+		const monthSelect = document.createElement('select');
+		monthSelect.id = 'modal_birthday_month';
+		const monthEmpty = document.createElement('option');
+		monthEmpty.value = '';
+		monthEmpty.textContent = '-- 月 --';
+		monthSelect.appendChild(monthEmpty);
+		const monthUnknown = document.createElement('option');
+		monthUnknown.value = '00';
+		monthUnknown.textContent = '00（未提供）';
+		if (currentMonth === '00') {
+			monthUnknown.selected = true;
+		}
+		monthSelect.appendChild(monthUnknown);
+		for (let m = 1; m <= 12; m++) {
+			const mm = String(m).padStart(2, '0');
+			const option = document.createElement('option');
+			option.value = mm;
+			option.textContent = mm;
+			if (mm === currentMonth) {
+				option.selected = true;
+			}
+			monthSelect.appendChild(option);
+		}
+		const daySelect = document.createElement('select');
+		daySelect.id = 'modal_birthday_day';
+		const dayEmpty = document.createElement('option');
+		dayEmpty.value = '';
+		dayEmpty.textContent = '-- 日 --';
+		daySelect.appendChild(dayEmpty);
+		const dayUnknown = document.createElement('option');
+		dayUnknown.value = '00';
+		dayUnknown.textContent = '00（未提供）';
+		if (currentDay === '00') {
+			dayUnknown.selected = true;
+		}
+		daySelect.appendChild(dayUnknown);
+		for (let d = 1; d <= 31; d++) {
+			const dd = String(d).padStart(2, '0');
+			const option = document.createElement('option');
+			option.value = dd;
+			option.textContent = dd;
+			if (dd === currentDay) {
+				option.selected = true;
+			}
+			daySelect.appendChild(option);
+		}
+		const row = document.createElement('div');
+		row.style.display = 'flex';
+		row.style.gap = '8px';
+		row.appendChild(yearSelect);
+		row.appendChild(monthSelect);
+		row.appendChild(daySelect);
+		wrap.appendChild(row);
+	} else if (inputType === 'select') {
+		const select = document.createElement('select');
+		select.id = 'modal_input';
+		(options || []).forEach(function (opt) {
+			const option = document.createElement('option');
+			option.value = opt.value;
+			option.textContent = opt.label;
+			if (opt.value === currentValue) {
+				option.selected = true;
+			}
+			select.appendChild(option);
+		});
+		wrap.appendChild(select);
+	} else {
+		const input = document.createElement('input');
+		input.id = 'modal_input';
+		input.type = 'text';
+		input.value = currentValue;
+		input.placeholder = '请输入改为的值';
+		wrap.appendChild(input);
+	}
+	document.getElementById('edit_modal').style.display = 'flex';
+	const focusTarget = document.getElementById('modal_input') || document.getElementById('modal_birthday_year');
+	if (focusTarget) {
+		focusTarget.focus();
+	}
+}
+function closeEditModal() {
+	document.getElementById('edit_modal').style.display = 'none';
+	document.getElementById('modal_input_wrap').innerHTML = '';
+	editingField = null;
+	editingType = null;
+}
+function saveEditModal() {
+	if (!editingField) return;
+	let newValue = '';
+	if (editingType === 'birthday') {
+		const year = (document.getElementById('modal_birthday_year')?.value || '').trim();
+		const month = (document.getElementById('modal_birthday_month')?.value || '').trim();
+		const day = (document.getElementById('modal_birthday_day')?.value || '').trim();
+		if (!year && !month && !day) {
+			newValue = '';
+		} else {
+			if (!year) {
+				alert('请选择年份');
+				return;
+			}
+			if ((!month || month === '00') && day && day !== '00') {
+				alert('月份未提供时，日期只能为空或 00');
+				return;
+			}
+			if (month && month !== '00' && day && day !== '00') {
+				const testDate = new Date(Number(year), Number(month) - 1, Number(day));
+				const valid = testDate.getFullYear() === Number(year)
+					&& testDate.getMonth() === Number(month) - 1
+					&& testDate.getDate() === Number(day);
+				if (!valid) {
+					alert('出生日期无效');
+					return;
+				}
+			}
+			newValue = `${year}-${month || '00'}-${day || '00'}`;
+		}
+	} else {
+		const input = document.getElementById('modal_input');
+		newValue = input ? input.value.trim() : '';
+	}
+	if ((editingField === 'legal_name' || editingField === 'display_name') && !newValue) {
+		alert('该字段不能为空');
+		return;
+	}
+	const hidden = document.getElementById('input_' + editingField);
+	const view = document.getElementById('view_' + editingField);
+	if (hidden) hidden.value = newValue;
+	if (view) {
+		view.textContent = newValue || '未提供';
+	}
+	closeEditModal();
+}
+document.getElementById('edit_modal').addEventListener('click', function (e) {
+	if (e.target.id === 'edit_modal') {
+		closeEditModal();
+	}
+});
+
+// 证件添加弹窗逻辑
+function openAddDocModal() {
+	document.getElementById('add_doc_modal').style.display = 'flex';
+	document.getElementById('add_doc_type').value = 'ID_CARD';
+	document.getElementById('add_doc_number').value = '';
+	// primary flag is always true, nothing to reset
+
+}
+
+// 类型按钮和更多功能
+function selectDocType(val) {
+	document.getElementById('add_doc_type').value = val;
+	document.querySelectorAll('#add_doc_type_group .doc-type-btn').forEach(b=>{
+		if(b.getAttribute('data-value')===val) b.style.background='#cce5ff';
+		else b.style.background='';
+	});
+	// if a passport subtype is selected, update the passport button text
+	const passportBtn = document.querySelector('#add_doc_type_group .doc-type-btn[data-value="PASSPORT"]');
+	if(passportBtn){
+		if(val.startsWith('PASSPORT-')){
+			passportBtn.textContent = val.replace('PASSPORT-','护照-');
+		} else {
+			passportBtn.textContent = '护照';
+		}
+	}
+}  
+// generic floating picker modal
+function showPicker(title, innerHtml, onClose) {
+    // hide underlying add_doc_modal if present
+    const underlying = document.getElementById('add_doc_modal');
+    let prevDisplay = null;
+    if (underlying) {
+        prevDisplay = underlying.style.display;
+        underlying.style.display = 'none';
+    }
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:#f0f0f0;display:flex;align-items:center;justify-content:center;z-index:2000;';
+    const box = document.createElement('div');
+    box.className = 'modal-box';
+    box.style.width='360px';
+    box.innerHTML = `<h3>${title}</h3>${innerHtml}`;
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    function cleanup() {
+        document.body.removeChild(overlay);
+        if (underlying) {
+            underlying.style.display = prevDisplay || '';
+        }
+        if (onClose) onClose();
+    }
+    overlay.addEventListener('click', e => { if (e.target === overlay) cleanup(); });
+    return {overlay,cleanup,box};
+}
+
+function handleMoreTypes() {
+    const all = all_types;
+    const defaults = ['ID_CARD','HMT_PASS']; // passport handled separately
+    const extras = all.filter(dt=>!defaults.includes(dt.type_code) && !dt.type_code.startsWith('PASSPORT-'));
+    // use flex container so buttons wrap
+    let html = '<div style="max-height:300px;overflow:auto;display:flex;flex-wrap:wrap;gap:4px;">';
+    extras.forEach(dt=>{
+        html += `<button class="btn btn-outline-secondary type_choice" data-code="${dt.type_code}">${dt.label}</button>`;
+    });
+    html += '</div>';
+    html += '<div style="margin-top:8px;"><label>或输入新类型：</label>'+
+            '<input id="other_type" class="form-control" placeholder="其它证件名称..." /></div>';
+    const picker = showPicker('更多证件', html, null);
+    picker.box.querySelectorAll('.type_choice').forEach(btn=>{
+        btn.onclick = e=>{
+            document.getElementById('add_doc_type').value = e.target.dataset.code;
+            document.querySelectorAll('#add_doc_type_group .doc-type-btn').forEach(b=>b.style.background='');
+            picker.cleanup();
+        };
+    });
+    const otherInput = picker.box.querySelector('#other_type');
+    otherInput.addEventListener('keydown', e=>{
+        if(e.key==='Enter'){
+            const val = otherInput.value.trim();
+            if(val){
+                document.getElementById('add_doc_type').value = val;
+                document.querySelectorAll('#add_doc_type_group .doc-type-btn').forEach(b=>b.style.background='');
+                picker.cleanup();
+            }
+        }
+    });
+}  
+document.addEventListener('DOMContentLoaded', function() {
+	// ESC关闭弹窗
+	document.getElementById('add_doc_modal').addEventListener('click', function(e){if(e.target.id==='add_doc_modal'){closeAddDocModal();}});
+	// attach type btn handlers
+	document.querySelectorAll('#add_doc_type_group .doc-type-btn').forEach(btn=>{
+		btn.addEventListener('click', function(){
+			let val=this.getAttribute('data-value');
+			if(val==='PASSPORT'){
+				const passports = all_types.filter(dt=>dt.type_code.startsWith('PASSPORT-'));
+				let html = '<div style="max-height:300px;overflow:auto;display:flex;flex-wrap:wrap;gap:4px;">';
+				passports.forEach(dt=>{
+					const country = dt.type_code.split('-',2)[1];
+					html += `<button class="btn btn-outline-secondary passport_choice" data-code="${dt.type_code}">${country}</button>`;
+				});
+				html += '</div>';
+				html += '<div style="margin-top:8px;"><label>或输入新国家/地区：</label>'+
+					'<input id="passport_other" class="form-control" placeholder="国家/地区名称..." /></div>';
+				const picker = showPicker('选择护照国家/地区', html, null);
+				picker.box.querySelectorAll('.passport_choice').forEach(pbtn=>{
+					pbtn.onclick = e=>{
+						val = e.target.dataset.code;
+						btn.textContent = val.replace('PASSPORT-','护照-');
+						document.getElementById('add_doc_type').value = val;
+						document.querySelectorAll('#add_doc_type_group .doc-type-btn').forEach(b=>b.style.background='');
+						picker.cleanup();
+					};
+				});
+				const otherInput = picker.box.querySelector('#passport_other');
+				otherInput.addEventListener('keydown', e=>{
+					if(e.key==='Enter'){
+						const country = otherInput.value.trim();
+						if(country){
+							val = 'PASSPORT-' + country;
+							btn.textContent = '护照-' + country;
+							document.getElementById('add_doc_type').value = val;
+							document.querySelectorAll('#add_doc_type_group .doc-type-btn').forEach(b=>b.style.background='');
+							picker.cleanup();
+						}
+					}
+				});
+			}
+			selectDocType(val);
+		});
+	});
+	document.getElementById('more_types_btn').addEventListener('click', handleMoreTypes);
+});
+// 平滑滚动到证件信息区域，用于管理
+function manageDocs() {
+	var el = document.getElementById('documents_section');
+	if (el) {
+		el.scrollIntoView({behavior: 'smooth'});
+	}
+	// 总是显示添加/管理弹窗，方便操作
+	openAddDocModal();
+}
+function closeAddDocModal() {
+	document.getElementById('add_doc_modal').style.display = 'none';
+}
+function submitAddDocModal() {
+	const type = document.getElementById('add_doc_type').value;
+	const number = document.getElementById('add_doc_number').value.trim();
+	// always primary
+	const isPrimary = true;
+	if (!number) { alert('请输入证件号码'); return; }
+	// 构造并提交表单
+	const form = document.createElement('form');
+	form.method = 'post';
+	form.style.display = 'none';
+	form.innerHTML = '<input name="action" value="add_doc">'
+		+ '<input name="doc_type" value="'+type+'">'
+		+ '<input name="doc_number" value="'+number+'">'
+		+ (isPrimary ? '<input name="is_primary" value="on">' : '');
+	document.body.appendChild(form);
+	form.submit();
+}
+document.addEventListener('DOMContentLoaded', function() {
+	// ESC关闭弹窗
+	document.getElementById('add_doc_modal').addEventListener('click', function(e){if(e.target.id==='add_doc_modal'){closeAddDocModal();}});
+});
+
+// 文档编辑支持
+let editingDocId = null;
+function openEditDocModal(id, type, number) {
+    editingDocId = id;
+    document.getElementById('add_doc_type').value = type;
+    document.getElementById('add_doc_number').value = number;
+    document.getElementById('add_doc_modal').style.display = 'flex';
+    document.querySelector('#add_doc_modal .modal-box h3').textContent = '编辑证件';
+}
+
+// 修改 submit 逻辑
+const oldSubmit = submitAddDocModal;
+submitAddDocModal = function() {
+    const type = document.getElementById('add_doc_type').value;
+    const number = document.getElementById('add_doc_number').value.trim();
+    if (!number) { alert('请输入证件号码'); return; }
+    const form = document.createElement('form');
+    form.method = 'post';
+    form.style.display = 'none';
+    if (editingDocId) {
+        form.innerHTML = '<input name="action" value="update_doc">'
+            + '<input name="doc_id" value="'+editingDocId+'">';
+    } else {
+        form.innerHTML = '<input name="action" value="add_doc">';
+    }
+    form.innerHTML += '<input name="doc_type" value="'+type+'">'
+        + '<input name="doc_number" value="'+number+'">'
+        + '<input name="is_primary" value="on">';
+    document.body.appendChild(form);
+    form.submit();
+};
+
+function closeAddDocModal() {
+    document.getElementById('add_doc_modal').style.display = 'none';
+    editingDocId = null;
+    document.querySelector('#add_doc_modal .modal-box h3').textContent = '添加证件';
+}
+</script>
+
+{% endblock %}
