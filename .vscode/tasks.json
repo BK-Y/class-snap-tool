@@ -1,0 +1,93 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "初始化数据库结构（多证件支持）",
+			"type": "shell",
+			"command": "python3 -c \"from db.schema import init_db; init_db()\"",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "再次初始化数据库结构（多证件支持）",
+			"type": "shell",
+			"command": "python3 -c \"from db.schema import init_db; init_db()\"",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "修正后再次初始化数据库结构（多证件支持）",
+			"type": "shell",
+			"command": "python3 -c \"from db.schema import init_db; init_db()\"",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "修正后再次初始化数据库结构（多证件支持）",
+			"type": "shell",
+			"command": "python3 -c \"from db.schema import init_db; init_db()\"",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "修正后再次初始化数据库结构（多证件支持）",
+			"type": "shell",
+			"command": "python3 -c \"from db.schema import init_db; init_db()\"",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "修正后再次初始化数据库结构（多证件支持）",
+			"type": "shell",
+			"command": "python3 -c \"from db.schema import init_db; init_db()\"",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "修正 students 表后初始化数据库结构",
+			"type": "shell",
+			"command": "python3 -c \"from db.schema import init_db; init_db()\"",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "修正逗号后初始化数据库结构",
+			"type": "shell",
+			"command": "python3 -c \"from db.schema import init_db; init_db()\"",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "修正所有表结构后初始化数据库结构",
+			"type": "shell",
+			"command": "python3 -c \"from db.schema import init_db; init_db()\"",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "修正 student_operation_logs 表后初始化数据库结构",
+			"type": "shell",
+			"command": "python3 -c \"from db.schema import init_db; init_db()\"",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		},
+		{
+			"label": "用 Python 初始化数据库结构验证 schema.sql",
+			"type": "shell",
+			"command": "python3 -c \"from db.schema import init_db; init_db()\"",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
+}

@@ -1,15 +1,22 @@
 # db/init_sample_data.py
 import sqlite3
-from pathlib import Path
+
+from .connection import get_db_path
 
 def init_sample_data():
     """
     插入初始测试数据（避免首次运行为空）
     """
-    db_path = Path(__file__).parent.parent / "data" / "school.db"
+    db_path = get_db_path()
     conn = sqlite3.connect(db_path)
     try:
         # 插入 5 名测试学生
+        # 默认证件类型
+        conn.execute("INSERT OR IGNORE INTO doc_types (type_code,label) VALUES (?,?)",('ID_CARD','身份证'))
+        conn.execute("INSERT OR IGNORE INTO doc_types (type_code,label) VALUES (?,?)",('HMT_PASS','回乡证'))
+        conn.execute("INSERT OR IGNORE INTO doc_types (type_code,label) VALUES (?,?)",('PASSPORT','护照'))
+        conn.execute("INSERT OR IGNORE INTO doc_types (type_code,label) VALUES (?,?)",('OTHER','其他'))
+
         conn.execute("""
             INSERT OR IGNORE INTO students (
                 display_name, student_number, legal_name,

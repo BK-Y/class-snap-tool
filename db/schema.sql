@@ -1,27 +1,43 @@
--- ============================================
--- 学生表 (students)
--- 存储学生基本信息和证件信息
--- ============================================
+
 CREATE TABLE IF NOT EXISTS students (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,	 -- 系统内部id(技术主键)
-    student_number TEXT NOT NULL UNIQUE,	-- 学号(业务id)
-    display_name TEXT NOT NULL,				-- 常用称呼
-
-    gender TEXT,				-- 性别
-    birthday TEXT,				-- 生日 
-    birthday_cal TEXT,				-- 生日所使用的日历,默认公历
-
-
-
-    -- 证件信息（法定，用于赛事报名等）
-	legal_name TEXT NOT NULL,
-    doc_type TEXT NOT NULL,
-    doc_number TEXT NOT NULL,
-	
-    -- 唯一约束
-    UNIQUE (doc_type,doc_number) --证件名不重复
+    id INTEGER PRIMARY KEY AUTOINCREMENT,    -- 系统内部id(技术主键)
+    student_number TEXT NOT NULL UNIQUE,      -- 学号(业务id)
+    display_name TEXT NOT NULL,               -- 常用称呼
+    gender TEXT,                              -- 性别
+    birthday TEXT,                            -- 生日
+    birthday_cal TEXT,                        -- 生日所使用的日历,默认公历
+    legal_name TEXT NOT NULL                 -- 证件信息（法定，用于赛事报名等）
+    -- 2026.03 多证件支持，主证件迁移至 student_documents 表
+    -- doc_type TEXT NOT NULL,
+    -- doc_number TEXT NOT NULL,
+    -- UNIQUE (doc_type,doc_number) --证件名不重复
 );
 
+-- ============================================
+-- 学生证件表 (student_documents)
+-- 支持一个学生多个证件，且每个学生只能有一个主证件
+-- ============================================
+CREATE TABLE IF NOT EXISTS student_documents (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_id INTEGER NOT NULL,
+    doc_type TEXT NOT NULL,
+    doc_number TEXT NOT NULL,
+    is_primary INTEGER NOT NULL DEFAULT 0, -- 1=主证件，0=非主证件
+    UNIQUE (student_id, doc_type),
+    FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+);
+
+-- ============================================
+-- 证件类型表（可扩展）
+-- 默认包含身份证、港澳台通行证、护照、其他；
+-- 用户新增类型会插入此表，便于下次使用。
+-- ============================================
+CREATE TABLE IF NOT EXISTS doc_types (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type_code TEXT NOT NULL UNIQUE,
+    label TEXT NOT NULL
+);
+-- SQLite 不支持 UNIQUE ... WHERE 语法，主证件唯一性需用触发器或应用层保证
 -- ============================================
 -- 班级表 (classes)
 -- 存储班级/课程信息
@@ -78,7 +94,6 @@ CREATE TABLE IF NOT EXISTS enrollment_logs (
 
     FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
     FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
-
     CHECK (event_type IN ('JOIN', 'LEAVE'))
 );
 

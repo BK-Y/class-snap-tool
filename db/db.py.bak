@@ -1,0 +1,62 @@
+# db/db.py
+import sqlite3
+import warnings
+
+from dao.student_dao import search_students as _search_students
+
+from .connection import get_db as _get_db_context
+from .connection import get_db_path
+from .schema import init_db as _init_db
+
+warnings.warn(
+    "db.db 已废弃，请改用 db.connection / db.schema / dao.* 模块。",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+DATABASE = str(get_db_path())
+
+
+def get_db() -> sqlite3.Connection:
+    """兼容旧接口：返回一个原始连接（调用方负责关闭）。"""
+    conn = sqlite3.connect(get_db_path())
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA journal_mode = WAL")
+    return conn
+
+
+def close_db(conn=None, e=None):
+    """兼容旧接口：允许 close_db(conn) 或 close_db(e=...) 调用。"""
+    if conn is not None and hasattr(conn, "close"):
+        conn.close()
+
+
+def init_db():
+    """兼容旧接口：转发到新初始化实现。"""
+    return _init_db()
+
+
+def search_students(
+    student_number=None,
+    display_name=None,
+    legal_name=None,
+    doc_type=None,
+    doc_number=None,
+    gender=None,
+):
+    """兼容旧接口：使用新 DAO 查询实现。"""
+    with _get_db_context() as conn:
+        return _search_students(
+            conn,
+            student_number=student_number,
+            display_name=display_name,
+            legal_name=legal_name,
+            doc_type=doc_type,
+            doc_number=doc_number,
+            gender=gender,
+        )
+
+
+if __name__ == '__main__':
+    init_db()

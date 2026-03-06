@@ -1,0 +1,26 @@
+<thead>
+<tr>
+    <th>学号</th>
+    <th>法定姓名</th>
+    <th>常用称呼</th>
+    <th>性别</th>
+    <th>主证件类型</th>
+    <th>主证件号码</th>
+    <th>操作</th>
+</tr>
+</thead>
+<tbody>
+{% for stu in students %}
+<tr>
+    <td>{{ stu.student_number }}</td>
+    <td>{{ stu.legal_name }}</td>
+    <td>{{ stu.display_name }}</td>
+    <td>{{ stu.gender or '—' }}</td>
+    <td>{{ {'ID_CARD': '身份证', 'PASSPORT': '护照', 'OTHER': '其他'}.get(stu.main_doc['doc_type'], stu.main_doc['doc_type']) if stu.main_doc else '—' }}</td>
+    <td>{{ stu.main_doc['doc_number'] if stu.main_doc else '—' }}</td>
+    <td>
+        <a href="{{ url_for('students.student_detail', student_number=stu.student_number) }}">详情/编辑</a>
+    </td>
+</tr>
+{% endfor %}
+</tbody>

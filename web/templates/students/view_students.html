@@ -33,30 +33,31 @@
         <thead>
             <tr>
                 <th>ID</th>
-				<th>学号</th>
+                <th>学号</th>
                 <th>姓名(证件)</th>
                 <th>昵称</th>
                 <th>性别</th>
                 <th>出生日期</th>
-				<th>证件</th>
-				<th>编辑</th>
+                <th>主证件类型</th>
+                <th>主证件号码</th>
+                <th>操作</th>
             </tr>
         </thead>
         <tbody>
             {% for s in students %}
             <tr>
-				<td>{{ loop.index }}</td>
-				<td>{{ s.student_number }}</td>
+                <td>{{ loop.index }}</td>
+                <td>{{ s.student_number }}</td>
                 <td>{{ s.legal_name }}</td>
                 <td>{{ s.display_name }}</td>
                 <td>{{ s.gender or '—' }}</td>
-				<td>{{ s.birthday or '—' }}</td>
-				<td>{{ s.doc_type }} / {{ s.doc_number }}</td>
-
-				<td>
-						<button><a href = "{{ url_for('students.edit_student',student_number=s.student_number) }}">编辑学员</a></button>
-						<button><a href = "{{ url_for('classes.list_classes') }}">查看班级 </a></button>
-				</td>
+                <td>{{ s.birthday or '—' }}</td>
+                <td>{{ {'ID_CARD': '身份证', 'HMT_PASS': '港澳台通行证', 'PASSPORT': '护照', 'OTHER': '其他'}.get(s.main_doc['doc_type'], s.main_doc['doc_type']) if s.main_doc else '—' }}</td>
+                <td>{{ s.main_doc['doc_number'] if s.main_doc else '—' }}</td>
+                <td>
+                    <a href="{{ url_for('students.student_detail', student_number=s.student_number) }}">详情/编辑</a>
+                    <a href="{{ url_for('classes.list_classes') }}">查看班级</a>
+                </td>
             </tr>
             {% endfor %}
         </tbody>
