@@ -4,6 +4,9 @@
 
 {% block sidebar %}
 <ul>
+    <li><a href="{{ url_for('index') }}">🏠 首页</a></li>
+    <li><a href="{{ url_for('students.index') }}">学生管理</a></li>
+    <li><a href="{{ url_for('classes.list_classes') }}">班级管理</a></li>
     <li><a href="{{ url_for('students.index') }}">← 返回列表</a></li>
     <li><a href="#basic_info">基本信息</a></li>
     <li><a href="#class_info">班级信息</a></li>

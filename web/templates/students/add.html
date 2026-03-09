@@ -4,8 +4,10 @@
 
 {% block sidebar %}
 <ul>
-    <li><a href="{{ url_for('students.index') }}">← 学员列表</a></li>
+    <li><a href="{{ url_for('index') }}">🏠 首页</a></li>
+    <li><a href="{{ url_for('students.index') }}">学生管理</a></li>
     <li><a href="{{ url_for('classes.list_classes') }}">🏫 班级管理</a></li>
+    <li><a href="{{ url_for('students.index') }}">← 学员列表</a></li>
 </ul>
 {% endblock %}
 
