@@ -53,7 +53,7 @@ def create_student(
     """, (
         student_number_value,
         display_name.strip(),
-        _clean_optional(legal_name),
+        _clean_optional(legal_name) or "",
         doc_type_value,
         doc_number_value,
         _clean_optional(gender),
@@ -91,7 +91,7 @@ def update_student(
         """,
         (
             display_name.strip(),
-            _clean_optional(legal_name),
+            _clean_optional(legal_name) or "",
             _clean_optional(gender),
             _clean_optional(birthday),
             doc_type_value,
