@@ -24,7 +24,16 @@
 					<option value="其他"  {% if filters.gender == '其他' %}selected{% endif %}>其他</option>
 			</select>
 		</label>
-	<button type="submit">🔍搜索</button>
+		<label>
+			班级：
+			<select name="class_id">
+				<option value="" {% if not filters.class_id %}selected{% endif %}>全部</option>
+				{% for c in classes %}
+				<option value="{{ c.id }}" {% if filters.class_id == c.id|string %}selected{% endif %}>{{ c.type }} {{ c.level }} 第{{ c.group_number }}期</option>
+				{% endfor %}
+			</select>
+		</label>
+	<button type="submit">🔍筛选</button>
 	<a href="{{ url_for('students.index') }}">清空</a>
 	</p>
 </form>

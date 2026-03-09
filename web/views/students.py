@@ -73,7 +73,7 @@ def index():
     name_id = request.args.get('name_id','').strip()
     name_nick = request.args.get('name_nick','').strip()
     gender  = request.args.get('gender','').strip()
-    # print("Received gender:", repr(gender))  # 查看终端输出
+    class_sel = request.args.get('class_id','').strip()
 
     # 调用通用查询函数
     with get_db() as conn:
@@ -81,7 +81,8 @@ def index():
             conn,
             legal_name = name_id or None,
             display_name = name_nick or None,
-            gender = gender or None
+            gender = gender or None,
+            class_id = int(class_sel) if class_sel.isdigit() else None,
         )
         # 查询每个学生的主证件
         student_list = []
@@ -92,12 +93,15 @@ def index():
                 **dict(stu),
                 'main_doc': main_doc
             })
+        # load all classes for dropdown
+        classes = list_classes_with_counts(conn)
     filters = {
         'name_id':name_id,
         'name_nick':name_nick,
-        'gender':gender
+        'gender':gender,
+        'class_id': class_sel,
     }
-    return render_template('/students/view_students.html', students=student_list, filters=filters)
+    return render_template('/students/view_students.html', students=student_list, filters=filters, classes=classes)
 
 @students_bp.route('/students/add',methods=['GET','POST'])
 def add_student():
