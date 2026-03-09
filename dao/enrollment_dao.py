@@ -119,6 +119,21 @@ def enroll_student_with_log(
 	return created
 
 
+def list_classes_for_student(conn: sqlite3.Connection, student_id: int) -> list:
+    """Return all classes a student has enrolled in, including enrolment time."""
+    cursor = conn.execute(
+        """
+        SELECT c.*, e.enrolled_at
+        FROM classes c
+        JOIN enrollments e ON e.class_id = c.id
+        WHERE e.student_id = ?
+        ORDER BY c.type, c.level, c.group_number
+        """,
+        (student_id,),
+    )
+    return cursor.fetchall()
+
+
 def remove_student_with_log(
 	conn: sqlite3.Connection,
 	*,

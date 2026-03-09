@@ -16,6 +16,7 @@ from dao.student_dao import (
     list_doc_types,
     add_doc_type,
 )
+from dao.enrollment_dao import list_classes_for_student
 from db import get_db
 
 students_bp = Blueprint("students", __name__)
@@ -270,6 +271,8 @@ def student_detail(student_number):
         if not student:
             return "学员不存在", 404
         documents = list_student_documents(conn, student['id'])
+        # also load class enrollment info for display
+        student_classes = list_classes_for_student(conn, student['id'])
         # load types for use in page (will refresh after modifications below)
         doc_types = []
         if request.method == 'POST':
@@ -332,6 +335,8 @@ def student_detail(student_number):
                         flash('同类型证件已存在，无法修改', 'error')
             # 操作后刷新数据
             documents = list_student_documents(conn, student['id'])
+            # 更新学生班级列表也有必要（虽然添加证件不会影响）
+            student_classes = list_classes_for_student(conn, student['id'])
             # 操作后重新读取证件类型
             doc_types = [dict(r) for r in list_doc_types(conn)]
     birthday_year, birthday_month, birthday_day = _split_birthday_for_form(student["birthday"])
@@ -353,6 +358,7 @@ def student_detail(student_number):
         "students/detail.html",
         student=student,
         documents=documents,
+        student_classes=student_classes,
         doc_types=doc_types,
         form_data=default_form_data,
         current_year=current_year,

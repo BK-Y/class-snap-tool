@@ -82,6 +82,28 @@
 		<div class="field-value" id="view_birthday">{{ student.birthday or '—' }}</div>
 		<button type="button" onclick="openEditModal('birthday', '出生日期', 'birthday', null, '改为：请选择年月日（月份/日期可选 00 表示未提供）')">编辑</button>
 	</div>
+	
+	<!-- 班级信息块 -->
+	<h3>班级信息</h3>
+	{% if student_classes and student_classes|length > 0 %}
+	<table border="1" cellpadding="6" style="margin-bottom:1em;">
+		<tr>
+			<th>类型</th><th>级别</th><th>期数</th><th>状态</th><th>报名时间</th><th>操作</th>
+		</tr>
+		{% for c in student_classes %}
+		<tr>
+			<td>{{ c['type'] }}</td>
+			<td>{{ c['level'] }}</td>
+			<td>{{ c['group_number'] }}</td>
+			<td>{{ c['status'] }}</td>
+			<td>{{ c['enrolled_at'] }}</td>
+			<td><a href="{{ url_for('classes.manage_class_students', class_id=c['id']) }}">详情</a></td>
+		</tr>
+		{% endfor %}
+	</table>
+	{% else %}
+	<p style="color:#888;">未报名任何班级</p>
+	{% endif %}
 
 <!-- 证件信息块开始 -->
 <h3 id="documents_section">证件信息 <button type="button" onclick="openAddDocModal()" style="font-size:0.8em;">添加证件</button></h3>
