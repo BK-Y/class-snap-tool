@@ -2,6 +2,13 @@
 
 {% block title %}新增学员 - {{ super() }} {% endblock %}
 
+{% block sidebar %}
+<ul>
+    <li><a href="{{ url_for('students.index') }}">← 学员列表</a></li>
+    <li><a href="{{ url_for('classes.list_classes') }}">🏫 班级管理</a></li>
+</ul>
+{% endblock %}
+
 {% block content %}
 <style>
     /* 简单样式 */

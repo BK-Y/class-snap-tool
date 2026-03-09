@@ -3,6 +3,13 @@
 
 {% block title %}学员管理 - {{ super() }}{% endblock %}
 
+{% block sidebar %}
+<ul>
+    <li><a href="{{ url_for('students.add_student') }}">➕ 新增学员</a></li>
+    <li><a href="{{ url_for('classes.list_classes') }}">🏫 班级管理</a></li>
+</ul>
+{% endblock %}
+
 {% block content %}
 
 <h2>学员管理</h2>
