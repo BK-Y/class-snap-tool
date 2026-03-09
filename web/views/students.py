@@ -117,6 +117,11 @@ def add_student():
         # auto_number = request.form.get('auto_number') == 'on'  # 学号默认系统自动生成，
         display_name = request.form.get('display_name', '').strip()
         legal_name = request.form.get('legal_name', '').strip()
+        age = request.form.get('age', '').strip()
+        try:
+            age_val = int(age) if age else None
+        except ValueError:
+            age_val = None
         doc_type = request.form.get('doc_type', '').strip()
         doc_number = request.form.get('doc_number', '').strip()
         gender = request.form.get('gender', '').strip() or None
@@ -140,6 +145,8 @@ def add_student():
                     errors.append('常用称呼不能为空')
                 if not legal_name:
                     errors.append('法定姓名不能为空')
+                if age_val is None:
+                    errors.append('年龄必须填写且为数字')
 
                 if not birthday and (
                     request.form.get("birthday_year")
@@ -157,6 +164,7 @@ def add_student():
                     student_number=student_number,
                     display_name=display_name,
                     legal_name=legal_name,
+                    age=age_val,
                     doc_type=doc_type,
                     doc_number=doc_number,
                     gender=gender,
