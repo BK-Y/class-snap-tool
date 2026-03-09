@@ -58,6 +58,13 @@
         <aside id="sidebar" style="width:200px;flex-shrink:0;background:#f9f9f9;padding:12px;">
             {% block sidebar %}{% endblock %}
         </aside>
+        <style>
+            #sidebar ul { list-style:none; padding:0; margin:0; }
+            #sidebar li.section { font-size:0.9em; font-weight:bold; margin-top:10px; color:#555; }
+            #sidebar li a { display:block; padding:4px 6px; color:#333; text-decoration:none; border-radius:4px; }
+            #sidebar li a.active { background:#ddd; font-weight:bold; }
+            #sidebar li a:hover { background:#eee; }
+        </style>
         <!-- main content area -->
         <div id="main_content" style="flex:1;padding:0 12px;">
             {% block content %}{% endblock %}
