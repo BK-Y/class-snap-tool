@@ -8,7 +8,7 @@
 {% block content %}
 
 <h2>学员管理</h2>
-<p><a href="{{ url_for('students.add_student') }}"> ➕ 新增学员 </a></p>
+<p><button id="open_add" class="btn btn-primary">➕ 新增学员</button></p>
 
 <h2>学员花名册</h2>
 <form method="GET">
@@ -76,4 +76,16 @@
 {% else %}
     <p>📭 暂无匹配学员</p>
 {% endif %}
+
+<div id="add_panel" style="position:fixed;top:0;right:-100%;width:360px;height:100%;background:#fff;box-shadow:-2px 0 5px rgba(0,0,0,.2);transition:right .3s;overflow:auto;z-index:2000;">
+    <div style="padding:10px;">
+        <button onclick="closeAddPanel()" style="float:right;">✖</button>
+        {% include 'students/_add_form.html' %}
+    </div>
+</div>
+<script>
+function openAddPanel(){ document.getElementById('add_panel').style.right='0'; }
+function closeAddPanel(){ document.getElementById('add_panel').style.right='-100%'; }
+document.getElementById('open_add').addEventListener('click', function(e){ e.preventDefault(); openAddPanel(); });
+</script>
 {% endblock %}
