@@ -16,6 +16,7 @@ from dao.student_dao import (
     list_doc_types,
     add_doc_type,
 )
+from dao.class_dao import list_classes_with_counts
 from dao.enrollment_dao import list_classes_for_student
 from db import get_db
 
