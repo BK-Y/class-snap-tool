@@ -430,8 +430,9 @@ function handleMoreTypes() {
     const picker = showPicker('更多证件', html, null);
     picker.box.querySelectorAll('.type_choice').forEach(btn=>{
         btn.onclick = e=>{
-            document.getElementById('add_doc_type').value = e.target.dataset.code;
-            document.querySelectorAll('#add_doc_type_group .doc-type-btn').forEach(b=>b.style.background='');
+            const code = e.target.dataset.code;
+            document.getElementById('add_doc_type').value = code;
+            selectDocType(code);
             picker.cleanup();
         };
     });
@@ -470,7 +471,7 @@ document.addEventListener('DOMContentLoaded', function() {
 						val = e.target.dataset.code;
 						btn.textContent = val.replace('PASSPORT-','护照-');
 						document.getElementById('add_doc_type').value = val;
-						document.querySelectorAll('#add_doc_type_group .doc-type-btn').forEach(b=>b.style.background='');
+						selectDocType(val);
 						picker.cleanup();
 					};
 				});
@@ -482,7 +483,7 @@ document.addEventListener('DOMContentLoaded', function() {
 							val = 'PASSPORT-' + country;
 							btn.textContent = '护照-' + country;
 							document.getElementById('add_doc_type').value = val;
-							document.querySelectorAll('#add_doc_type_group .doc-type-btn').forEach(b=>b.style.background='');
+							selectDocType(val);
 							picker.cleanup();
 						}
 					}
