@@ -35,8 +35,8 @@ def create_student(
     student_number: str,
     display_name: str,
     legal_name: str,
-    doc_type: Optional[str],
-    doc_number: Optional[str],
+    doc_type: Optional[str] = None,
+    doc_number: Optional[str] = None,
     gender: Optional[str] = None,
     birthday: Optional[str] = None,
 ) -> int:
@@ -54,6 +54,7 @@ def create_student(
         student_number_value,
         display_name.strip(),
         legal_name.strip(),
+        age,
         doc_type_value,
         doc_number_value,
         _clean_optional(gender),
@@ -109,50 +110,58 @@ def search_students(
     doc_type: str = None,
     doc_number: str = None,
     gender: str = None,
+    class_id: int = None,
     limit: int = None,
     offset: int = None,
 ) -> List[sqlite3.Row]:
-    """统一查询接口"""
+    """统一查询接口，支持按班级筛选（通过enrollments）。"""
     where_clauses = []
     params = []
-    
-    
+    joins = []
+
+    if class_id is not None:
+        joins.append("JOIN enrollments e ON e.student_id = students.id")
+        where_clauses.append("e.class_id = ?")
+        params.append(class_id)
+
     if student_number is not None:
         where_clauses.append("student_number = ?")
         params.append(student_number.strip())
-    
+
     if display_name:
         where_clauses.append("display_name LIKE ?")
         params.append(f"%{display_name.strip()}%")
-    
+
     if legal_name:
         where_clauses.append("legal_name LIKE ?")
         params.append(f"%{legal_name.strip()}%")
-    
+
     if doc_type:
         where_clauses.append("doc_type = ?")
         params.append(doc_type.strip())
-    
+
     if doc_number:
         where_clauses.append("doc_number = ?")
         params.append(doc_number.strip())
-    
+
     if gender:
         where_clauses.append("gender = ?")
         params.append(gender.strip())
-    
-    sql = "SELECT * FROM students"
+
+    sql = "SELECT students.* FROM students"
+    if joins:
+        sql += " " + " ".join(joins)
     if where_clauses:
         sql += " WHERE " + " AND ".join(where_clauses)
-    sql += " ORDER BY id"
-    
+    sql += " ORDER BY students.id"
+
     if limit:
         sql += " LIMIT ?"
         params.append(limit)
     if offset:
         sql += " OFFSET ?"
         params.append(offset)
-    
+
     cursor = conn.execute(sql, params)
     return cursor.fetchall()
 

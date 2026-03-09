@@ -49,6 +49,21 @@
                 <div class="info-box">
                         <strong>注意：</strong> 常用称呼和法定姓名 <strong>至少填写一个</strong>
                 </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>出生日期 <span class="required">*</span></label>
+                        <input name="birthday" value="{{ form_data.birthday if form_data else '' }}" placeholder="YYYY-MM-DD" />
+                    </div>
+                    <div class="form-group">
+                        <label>性别 <span class="required">*</span></label>
+                        <select name="gender">
+                            <option value="">请选择</option>
+                            <option value="男" {{ 'selected' if form_data and form_data.gender=='男' else '' }}>男</option>
+                            <option value="女" {{ 'selected' if form_data and form_data.gender=='女' else '' }}>女</option>
+                            <option value="其他" {{ 'selected' if form_data and form_data.gender=='其他' else '' }}>其他</option>
+                        </select>
+                    </div>
+                </div>
             </div>
         </div>
 
