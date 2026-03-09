@@ -308,8 +308,9 @@
 			newValue = input ? input.value.trim() : '';
 		}
 
-		if ((editingField === 'legal_name' || editingField === 'display_name') && !newValue) {
-			alert('该字段不能为空');
+// only common name is strictly required; legal name may be left blank
+        if (editingField === 'display_name' && !newValue) {
+            alert('常用称呼不能为空');
 			return;
 		}
 

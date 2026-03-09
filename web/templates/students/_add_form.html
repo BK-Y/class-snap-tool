@@ -36,23 +36,22 @@
                                value="{{ form_data.display_name if form_data else '' }}"
                                placeholder="如：小明/ Henry">
                     </div>
-
-                    <div class="form-group">
-                        <label for="legal_name">法定姓名 <span class="required">*</span></label>
-                        <input type="text" 
-                               id="legal_name" 
-                               name="legal_name" 
-                               value="{{ form_data.legal_name if form_data else '' }}"
-                               placeholder="如：张小明">
-                    </div>
                 </div>
                 <div class="info-box">
                         <strong>注意：</strong> 常用称呼和法定姓名 <strong>至少填写一个</strong>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>出生日期 <span class="required">*</span></label>
-                        <input name="birthday" value="{{ form_data.birthday if form_data else '' }}" placeholder="YYYY-MM-DD" />
+                        <label>出生年<span class="required">*</span></label>
+                        <input name="birthday_year" maxlength="4" size="4" value="{{ form_data.birthday_year if form_data else '' }}" />
+                    </div>
+                    <div class="form-group">
+                        <label>出生月<span class="required">*</span></label>
+                        <input name="birthday_month" maxlength="2" size="2" value="{{ form_data.birthday_month if form_data else '' }}" />
+                    </div>
+                    <div class="form-group">
+                        <label>出生日<span class="required">*</span></label>
+                        <input name="birthday_day" maxlength="2" size="2" value="{{ form_data.birthday_day if form_data else '' }}" />
                     </div>
                     <div class="form-group">
                         <label>性别 <span class="required">*</span></label>
@@ -74,17 +73,8 @@
             <div class="card-body" id="opt_body" style="display:none;">
                 <div class="form-row">
                     <div class="form-group">
-                        <label>性别：</label>
-                        <select name="gender">
-                            <option value="">请选择</option>
-                            <option value="男" {{ 'selected' if form_data and form_data.gender=='男' else '' }}>男</option>
-                            <option value="女" {{ 'selected' if form_data and form_data.gender=='女' else '' }}>女</option>
-                            <option value="其他" {{ 'selected' if form_data and form_data.gender=='其他' else '' }}>其他</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>出生日期：</label>
-                        <input name="birthday" value="{{ form_data.birthday if form_data else '' }}" placeholder="YYYY-MM-DD" />
+                        <label for="legal_name">法定姓名：</label>
+                        <input type="text" id="legal_name" name="legal_name" value="{{ form_data.legal_name if form_data else '' }}" placeholder="如：张小明">
                     </div>
                 </div>
                 <!-- further optional fields could be added here -->

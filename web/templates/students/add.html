@@ -145,27 +145,9 @@
                                value="{{ form_data.display_name if form_data else '' }}"
                                placeholder="如：小明/ Henry">
                     </div>
-
-                    <div class="form-group">
-                        <label for="legal_name">法定姓名 <span class="required">*</span><small>身份证件上的姓名</small></label>
-                        <input type="text" 
-                               id="legal_name" 
-                               name="legal_name" 
-                               value="{{ form_data.legal_name if form_data else '' }}"
-							   placeholder="如：张小明">
-                    </div>
                 </div>
                 <div class="info-box">
-						<strong>注意：</strong> 常用称呼和法定姓名 <strong>至少填写一个</strong>
-				</div>
-
-                <!-- 性别 -->
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="gender">性别</label>
-                        <select id="gender" name="gender">
-                            <option value="">请选择</option>
-                            <option value="男" {{ 'selected' if form_data and form_data.gender == '男' else '' }}>男</option>
+				<strong>注意：</strong> 常用称呼和法定姓名 <strong>至少填写一个</strong>
                             <option value="女" {{ 'selected' if form_data and form_data.gender == '女' else '' }}>女</option>
                             <option value="其他" {{ 'selected' if form_data and form_data.gender == '其他' else '' }}>其他</option>
                         </select>
@@ -257,32 +239,18 @@
             </div>
         </div>
 
-        <!-- 提交按钮 -->
-        <div style="text-align: right; margin-top: 20px;">
-            <a href="{{ url_for('students.index') }}" class="btn btn-secondary">取消</a>
-            <button type="submit" class="btn btn-primary">提交</button>
+        <!-- 其他信息（可选） -->
+        <div class="card" style="margin-top:10px;">
+            <div class="card-header">其他信息 <small>(可选)</small></div>
+            <div class="card-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="legal_name">法定姓名</label>
+                        <input type="text" id="legal_name" name="legal_name" value="{{ form_data.legal_name if form_data else '' }}" placeholder="如：张小明">
+                    </div>
+                </div>
+            </div>
         </div>
-    </form>
-</div>
-
-<!-- 前端验证脚本 -->
-<script>
-		
-document.querySelector('form').addEventListener('submit', function(e) {
-    var displayName = document.getElementById('display_name').value.trim();
-    var legalName = document.getElementById('legal_name').value.trim();
-    
-    if (!displayName && !legalName) {
-        e.preventDefault();
-        alert('⚠️ 常用称呼和法定姓名至少填写一个！');
-        document.getElementById('display_name').focus();
-    }
-});
-function toggleStudentNumber() {
-    var auto = document.getElementById('auto_student_number');
-    var input = document.getElementById('student_number_input');
-    var preview = document.getElementById('student_number_preview');
-    
     if (auto.checked) {
         input.style.display = 'none';
         preview.style.display = 'block';

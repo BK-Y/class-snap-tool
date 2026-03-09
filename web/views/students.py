@@ -136,10 +136,9 @@ def add_student():
                         errors.append('学号已存在')
                 
                 # 其他校验
-                if not display_name:
-                    errors.append('常用称呼不能为空')
-                if not legal_name:
-                    errors.append('法定姓名不能为空')
+                # 至少填写常用称呼或法定姓名其中一项
+                if not display_name and not legal_name:
+                    errors.append('常用称呼和法定姓名至少填写一项')
                 if not birthday:
                     errors.append('出生日期为必填项')
 
@@ -214,10 +213,8 @@ def edit_student(student_number):
         doc_number = request.form.get("doc_number", "").strip()
 
         errors = []
-        if not display_name:
-            errors.append("常用称呼不能为空")
-        if not legal_name:
-            errors.append("法定姓名不能为空")
+        if not display_name and not legal_name:
+            errors.append("常用称呼和法定姓名至少填写一项")
 
         if not birthday and (
             request.form.get("birthday_year")
@@ -288,8 +285,9 @@ def student_detail(student_number):
                 display_name = request.form.get('display_name', '').strip()
                 legal_name = request.form.get('legal_name', '').strip()
                 gender = request.form.get('gender', '').strip() or None
+                # basic page uses combined birthday for detail editing
                 birthday = request.form.get('birthday', '').strip() or None
-                if display_name and legal_name:
+                if display_name or legal_name:
                     update_student(
                         conn,
                         student_number=student_number,
@@ -298,6 +296,8 @@ def student_detail(student_number):
                         gender=gender,
                         birthday=birthday,
                     )
+                else:
+                    flash('请填写常用称呼或法定姓名', 'error')
                     conn.commit()
                     # 刷新 student
                     student = conn.execute(
