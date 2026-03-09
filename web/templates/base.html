@@ -64,6 +64,15 @@
             #sidebar li a { display:block; padding:4px 6px; color:#333; text-decoration:none; border-radius:4px; }
             #sidebar li a.active { background:#ddd; font-weight:bold; }
             #sidebar li a:hover { background:#eee; }
+            /* responsive tweaks */
+            @media (max-width: 768px) {
+                .container { flex-direction: column; }
+                #sidebar { width: 100%; margin-bottom: 10px; }
+                #sidebar ul { display: flex; flex-wrap: wrap; gap:4px; }
+                #sidebar li { flex: 1 1 auto; }
+                #main_content { padding: 0; }
+                table { display: block; overflow-x: auto; }
+            }
         </style>
         <!-- main content area -->
         <div id="main_content" style="flex:1;padding:0 12px;">
