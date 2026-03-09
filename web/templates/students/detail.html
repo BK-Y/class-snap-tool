@@ -84,7 +84,7 @@
 	</div>
 	
 	<!-- 班级信息块 -->
-	<h3>班级信息</h3>
+	<h3 id="class_info">班级信息</h3>
 	{% if student_classes and student_classes|length > 0 %}
 	<table border="1" cellpadding="6" style="margin-bottom:1em;">
 		<tr>
@@ -104,6 +104,10 @@
 	{% else %}
 	<p style="color:#888;">未报名任何班级</p>
 	{% endif %}
+
+<!-- 证件信息块开始 -->
+	</div> <!-- end main_content -->
+</div> <!-- end container -->
 
 <!-- 证件信息块开始 -->
 <h3 id="documents_section">证件信息 <button type="button" onclick="openAddDocModal()" style="font-size:0.8em;">添加证件</button></h3>
