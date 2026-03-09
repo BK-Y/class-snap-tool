@@ -1,6 +1,5 @@
 <div class="form-container">
     <h2>➕添加学生</h2>
-    <p style="color: #666;">学员基础信息收集</p>
     <!-- 错误提示 -->
     {% if errors %}
     <div class="error-box">
@@ -24,7 +23,6 @@
 
     <form method="POST" action="{{ url_for('students.add_student') }}">
         <div class="card">
-            <div class="card-header">必填信息</div>
             <div class="card-body">
                 <!-- 姓名（二选一必填） -->
                 <div class="form-row">
@@ -36,9 +34,6 @@
                                value="{{ form_data.display_name if form_data else '' }}"
                                placeholder="如：小明/ Henry">
                     </div>
-                </div>
-                <div class="info-box">
-                        <strong>注意：</strong> 常用称呼和法定姓名 <strong>至少填写一个</strong>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
@@ -55,12 +50,12 @@
                     </div>
                     <div class="form-group">
                         <label>性别 <span class="required">*</span></label>
-                        <select name="gender">
-                            <option value="">请选择</option>
-                            <option value="男" {{ 'selected' if form_data and form_data.gender=='男' else '' }}>男</option>
-                            <option value="女" {{ 'selected' if form_data and form_data.gender=='女' else '' }}>女</option>
-                            <option value="其他" {{ 'selected' if form_data and form_data.gender=='其他' else '' }}>其他</option>
-                        </select>
+                        <div style="margin-top:4px;">
+                            <label><input type="radio" name="gender" value="男" {{ 'checked' if form_data and form_data.gender=='男' else '' }}>男</label>
+                            <label><input type="radio" name="gender" value="女" {{ 'checked' if form_data and form_data.gender=='女' else '' }}>女</label>
+                            <label><input type="radio" name="gender" value="其他" {{ 'checked' if form_data and form_data.gender=='其他' else '' }}>其他</label>
+                            <label><input type="radio" name="gender" value="" {{ 'checked' if form_data and not form_data.gender else '' }}>未填写</label>
+                        </div>
                     </div>
                 </div>
             </div>

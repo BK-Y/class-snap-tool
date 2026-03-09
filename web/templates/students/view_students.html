@@ -15,15 +15,11 @@
 	<p>
 		<label>姓名（证件）：<input type = 'text' name='name_id' value="{{ filters.name_id }}"></label>
 		<label>昵称：<input type = 'text' name='name_nick' value="{{ filters.name_nick }}"></label>
-		<label>
-			性别：
-			<select name="gender">
-					<option value=""  {% if not filters.gender  %}selected{% endif %}>全部</option>
-					<option value="男"  {% if filters.gender == '男' %}selected{% endif %}>男</option>
-					<option value="女"  {% if filters.gender == '女' %}selected{% endif %}>女</option>
-					<option value="其他"  {% if filters.gender == '其他' %}selected{% endif %}>其他</option>
-			</select>
-		</label>
+		<label>性别：</label>
+		<label><input type="radio" name="gender" value="" {% if not filters.gender %}checked{% endif %}> 全部</label>
+		<label><input type="radio" name="gender" value="男" {% if filters.gender == '男' %}checked{% endif %}> 男</label>
+		<label><input type="radio" name="gender" value="女" {% if filters.gender == '女' %}checked{% endif %}> 女</label>
+		<label><input type="radio" name="gender" value="其他" {% if filters.gender == '其他' %}checked{% endif %}> 其他</label>
 		<label>
 			班级：
 			<select name="class_id">

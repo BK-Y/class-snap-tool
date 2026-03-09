@@ -85,7 +85,7 @@
 	<div class="field-row">
 		<label>性别：</label>
 		<div class="field-value" id="view_gender">{{ student.gender or '—' }}</div>
-		<button type="button" onclick="openEditModal('gender', '性别', 'select', [{value:'',label:'请选择'},{value:'男',label:'男'},{value:'女',label:'女'},{value:'其他',label:'其他'}])">编辑</button>
+		<button type="button" onclick="openEditModal('gender', '性别', 'radio', [{value:'男',label:'男'},{value:'女',label:'女'},{value:'其他',label:'其他'},{value:'',label:'未填写'}])">编辑</button>
 	</div>
 	<div class="field-row">
 		<label>出生日期：</label>
@@ -303,14 +303,22 @@ function openEditModal(fieldName, label, inputType, options, customHint) {
 			select.appendChild(option);
 		});
 		wrap.appendChild(select);
+	} else if (inputType === 'radio') {
+		const radios = document.createElement('div');
+		(options || []).forEach(function(opt){
+			const labelEl = document.createElement('label');
+			labelEl.style.marginRight='8px';
+			const radio = document.createElement('input');
+			radio.type='radio';
+			radio.name='modal_radio';
+			radio.value=opt.value;
+			if(opt.value===currentValue) radio.checked=true;
+			labelEl.appendChild(radio);
+			labelEl.appendChild(document.createTextNode(' '+opt.label));
+			radios.appendChild(labelEl);
+		});
+		wrap.appendChild(radios);
 	} else {
-		const input = document.createElement('input');
-		input.id = 'modal_input';
-		input.type = 'text';
-		input.value = currentValue;
-		input.placeholder = '请输入改为的值';
-		wrap.appendChild(input);
-	}
 	document.getElementById('edit_modal').style.display = 'flex';
 	const focusTarget = document.getElementById('modal_input') || document.getElementById('modal_birthday_year');
 	if (focusTarget) {
@@ -353,6 +361,10 @@ function saveEditModal() {
 			}
 			newValue = `${year}-${month || '00'}-${day || '00'}`;
 		}
+	} else if (editingType === 'radio') {
+		const radios = document.getElementsByName('modal_radio');
+		radios.forEach(function(r){ if(r.checked) newValue = r.value; });
+		newValue = newValue || '';
 	} else {
 		const input = document.getElementById('modal_input');
 		newValue = input ? input.value.trim() : '';

@@ -87,7 +87,7 @@
 	<div class="field-row">
 		<label>性别：</label>
 		<div class="field-value" id="view_gender">{{ form_data.gender or '—' }}</div>
-		<button type="button" onclick="openEditModal('gender', '性别', 'select', [{value:'',label:'请选择'},{value:'男',label:'男'},{value:'女',label:'女'},{value:'其他',label:'其他'}])">编辑</button>
+		<button type="button" onclick="openEditModal('gender', '性别', 'radio', [{value:'男',label:'男'},{value:'女',label:'女'},{value:'其他',label:'其他'},{value:'',label:'未填写'}])">编辑</button>
 	</div>
 
 	<div class="field-row">
@@ -241,6 +241,21 @@
 				select.appendChild(option);
 			});
 			wrap.appendChild(select);
+		} else if (inputType === 'radio') {
+			(options || []).forEach(function (opt) {
+				const labelEl = document.createElement('label');
+				labelEl.style.marginRight = '8px';
+				const radio = document.createElement('input');
+				radio.type = 'radio';
+				radio.name = 'modal_radio';
+				radio.value = opt.value;
+				if (opt.value === currentValue) {
+					radio.checked = true;
+				}
+				labelEl.appendChild(radio);
+				labelEl.appendChild(document.createTextNode(' ' + opt.label));
+				wrap.appendChild(labelEl);
+			});
 		} else {
 			const input = document.createElement('input');
 			input.id = 'modal_input';
@@ -303,36 +318,41 @@
 				}
 				newValue = `${year}-${month || '00'}-${day || '00'}`;
 			}
-		} else {
-			const input = document.getElementById('modal_input');
-			newValue = input ? input.value.trim() : '';
-		}
+        } else if (editingType === 'radio') {
+            const radios = document.getElementsByName('modal_radio');
+            radios.forEach(function(r) {
+                if (r.checked) newValue = r.value;
+            });
+            newValue = newValue || '';
+        } else {
+            const input = document.getElementById('modal_input');
+            newValue = input ? input.value.trim() : '';
+        }
 
-// only common name is strictly required; legal name may be left blank
+        // enforce display_name (legal optional)
         if (editingField === 'display_name' && !newValue) {
             alert('常用称呼不能为空');
-			return;
-		}
+            return;
+        }
 
-		const hidden = document.getElementById('input_' + editingField);
-		const view = document.getElementById('view_' + editingField);
+        const hidden = document.getElementById('input_' + editingField);
+        const view = document.getElementById('view_' + editingField);
 
-		if (hidden) hidden.value = newValue;
-		if (view) {
-			if (editingField === 'doc_type') {
-				view.textContent = toDocTypeLabel(newValue);
-			} else {
-				view.textContent = newValue || '未提供';
-			}
-		}
+        if (hidden) hidden.value = newValue;
+        if (view) {
+            if (editingField === 'doc_type') {
+                view.textContent = toDocTypeLabel(newValue);
+            } else {
+                view.textContent = newValue || '未提供';
+            }
+        }
 
-		closeEditModal();
-	}
-
-	document.getElementById('edit_modal').addEventListener('click', function (e) {
-		if (e.target.id === 'edit_modal') {
-			closeEditModal();
-		}
-	});
+        closeEditModal();
+    }
+    document.getElementById('edit_modal').addEventListener('click', function (e) {
+        if (e.target.id === 'edit_modal') {
+            closeEditModal();
+        }
+    });
 </script>
 {% endblock %}
