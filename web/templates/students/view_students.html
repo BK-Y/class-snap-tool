@@ -5,7 +5,7 @@
 
 {% block sidebar %}
 <ul>
-    <li><a href="{{ url_for('index') }}">🏠 首页</a></li>
+    <li><a href="{{ url_for('index.index') }}">🏠 首页</a></li>
     <li><a href="{{ url_for('students.index') }}">学生管理</a></li>
     <li><a href="{{ url_for('students.add_student') }}">➕ 新增学员</a></li>
     <li><a href="{{ url_for('classes.list_classes') }}">🏫 班级管理</a></li>
