@@ -124,19 +124,19 @@
 <!-- 证件信息块开始 -->
 <h3 id="documents_section">证件信息 <button type="button" onclick="openAddDocModal()" style="font-size:0.8em;">添加证件</button></h3>
 {% if documents and documents|length > 0 %}
-<table border="1" cellpadding="6" style="margin-bottom: 1em;">
-    <tr>
-        <th>类型</th>
-        <th>号码</th>
-        <th>主证件</th>
-        <th>操作</th>
-    </tr>
+<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:1em;">
     {% for doc in documents %}
-    <tr>
-        <td>{{ {'ID_CARD': '身份证', 'HMT_PASS': '港澳台通行证', 'PASSPORT': '护照', 'OTHER': '其他'}.get(doc['doc_type'], doc['doc_type']) }}</td>
-        <td>{{ doc['doc_number'] }}</td>
-        <td>{% if doc['is_primary'] %}✔ 主证件{% endif %}</td>
-        <td>
+    <div class="field-row" style="border:1px solid #ddd;padding:8px;border-radius:4px;align-items:flex-start;">
+        <div style="flex:2;">
+            <strong>类型：</strong>{{ {'ID_CARD': '身份证', 'HMT_PASS': '港澳台通行证', 'PASSPORT': '护照', 'OTHER': '其他'}.get(doc['doc_type'], doc['doc_type']) }}
+        </div>
+        <div style="flex:3;">
+            <strong>号码：</strong>{{ doc['doc_number'] }}
+        </div>
+        <div style="flex:1;">
+            {% if doc['is_primary'] %}<span style="color:green;">✔ 主证件</span>{% endif %}
+        </div>
+        <div style="flex:3;">
             <button type="button" onclick="openEditDocModal({{ doc['id'] }}, '{{ doc['doc_type'] }}', '{{ doc['doc_number'] }}')">编辑</button>
             <form method="post" style="display:inline;">
                 <input type="hidden" name="action" value="set_primary">
@@ -150,10 +150,10 @@
                 <input type="hidden" name="doc_id" value="{{ doc['id'] }}">
                 <button type="submit" onclick="return confirm('确定删除该证件？')">删除</button>
             </form>
-        </td>
-    </tr>
+        </div>
+    </div>
     {% endfor %}
-</table>
+</div>
 {% else %}
 <p style="color:#888;">暂无证件信息</p>
 {% endif %}

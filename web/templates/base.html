@@ -55,11 +55,11 @@
 	{% include 'header.html' %}
     <div class="container" style="display:flex;">
         <!-- sidebar area: child templates may override -->
-        <aside id="sidebar" style="width:200px;flex-shrink:0;">
+        <aside id="sidebar" style="width:200px;flex-shrink:0;background:#f9f9f9;padding:12px;">
             {% block sidebar %}{% endblock %}
         </aside>
         <!-- main content area -->
-        <div id="main_content" style="flex:1;">
+        <div id="main_content" style="flex:1;padding:0 12px;">
             {% block content %}{% endblock %}
         </div>
     </div>
