@@ -3,17 +3,7 @@
 
 {% block title %}学员管理 - {{ super() }}{% endblock %}
 
-{% block sidebar %}
-<ul>
-    <li class="section">常用</li>
-    <li><a href="{{ url_for('index.index') }}" {% if request.endpoint=='index.index' %}class="active"{% endif %}>🏠 首页</a></li>
-    <li class="section">学生</li>
-    <li><a href="{{ url_for('students.index') }}" {% if request.endpoint=='students.index' %}class="active"{% endif %}>学生管理</a></li>
-    <li><a href="{{ url_for('students.add_student') }}" {% if request.endpoint=='students.add_student' %}class="active"{% endif %}>➕ 新增学员</a></li>
-    <li class="section">班级</li>
-    <li><a href="{{ url_for('classes.list_classes') }}" {% if request.endpoint=='classes.list_classes' %}class="active"{% endif %}>🏫 班级管理</a></li>
-</ul>
-{% endblock %}
+
 
 {% block content %}
 
