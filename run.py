@@ -16,15 +16,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--debug",
         action="store_true",
-        default=os.getenv("DEBUG", "1") in {"1", "true", "True"},
-        help="Enable debug mode",
+        default=False,
+        help="Enable debug mode (overrides environment)",
     )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    app.run(host=args.host, port=args.port, debug=args.debug)
+    # CLI flag takes precedence, otherwise honour config.debug
+    debug_mode = args.debug or app.config.get("DEBUG", False)
+    app.run(host=args.host, port=args.port, debug=debug_mode)
 
 
 if __name__ == "__main__":

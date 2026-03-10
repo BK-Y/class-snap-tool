@@ -1,18 +1,15 @@
-import sqlite3
 from uuid import uuid4
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 
-from dao.class_dao import create_class, get_class_by_id, list_classes_with_counts
-from dao.enrollment_dao import (
-    enroll_student_with_log,
-    list_available_students_for_class,
+from dao.class_sa_dao import create_class, get_class_by_id, list_classes_with_counts
+from dao.enrollment_sa_dao import (
+    enroll_student,
     list_enrollment_logs_by_class,
     list_students_in_class,
-    remove_student_with_log,
+    remove_student,
+    list_classes_for_student,
 )
-
-from db import get_db
 
 classes_bp = Blueprint('classes',__name__,url_prefix='/classes')
 
@@ -110,29 +107,24 @@ def list_classes():
 
         if not errors:
             try:
-                with get_db() as conn:
-                    create_class(
-                        conn,
-                        class_type=class_type,
-                        level=level,
-                        group_number=group_number,
-                        status=class_status,
-                    )
-                    conn.commit()
+                create_class(
+                    class_type=class_type,
+                    level=level,
+                    group_number=group_number,
+                    status=class_status,
+                )
                 flash('班级创建成功', 'success')
                 return redirect(url_for('classes.list_classes'))
-            except sqlite3.IntegrityError:
+            except Exception:
                 errors.append('同类型/同级别/同期数班级已存在')
 
-    with get_db() as conn:
-        classes = list_classes_with_counts(conn)
+    classes = list_classes_with_counts()
     return render_template('classes/list.html', classes=classes, errors=errors)
 
 
 @classes_bp.route('/<int:class_id>/students', methods=['GET', 'POST'])
 def manage_class_students(class_id):
-    with get_db() as conn:
-        class_item = get_class_by_id(conn, class_id)
+    class_item = get_class_by_id(class_id)
 
     if not class_item:
         return '班级不存在', 404
@@ -150,45 +142,44 @@ def manage_class_students(class_id):
             flash('学员参数无效', 'error')
             return redirect(url_for('classes.manage_class_students', class_id=class_id))
 
-        with get_db() as conn:
-            if action == 'enroll':
-                created = enroll_student_with_log(
-                    conn,
-                    class_id=class_id,
-                    student_id=student_id,
-                    operator_id=operator_id,
-                    reason=reason,
-                    source='web',
-                    request_id=request_id,
-                )
-                if created:
-                    flash('学员已加入班级', 'success')
-                else:
-                    flash('学员已在班级中', 'success')
-            elif action == 'remove':
-                removed = remove_student_with_log(
-                    conn,
-                    class_id=class_id,
-                    student_id=student_id,
-                    operator_id=operator_id,
-                    reason=reason,
-                    source='web',
-                    request_id=request_id,
-                )
-                if removed:
-                    flash('学员已移出班级', 'success')
-                else:
-                    flash('学员当前不在该班级', 'error')
-            else:
-                flash('未知操作', 'error')
-            conn.commit()
+        if action == 'enroll':
+            enroll_student(
+                class_id=class_id,
+                student_id=student_id,
+                operator_id=operator_id,
+                reason=reason,
+                source='web',
+                request_id=request_id,
+            )
+            flash('学员已加入班级', 'success')
+        elif action == 'remove':
+            remove_student(
+                class_id=class_id,
+                student_id=student_id,
+                operator_id=operator_id,
+                reason=reason,
+                source='web',
+                request_id=request_id,
+            )
+            flash('学员已移出班级', 'success')
+        else:
+            flash('未知操作', 'error')
 
         return redirect(url_for('classes.manage_class_students', class_id=class_id))
 
-    with get_db() as conn:
-        enrolled_students = list_students_in_class(conn, class_id=class_id)
-        available_students = list_available_students_for_class(conn, class_id=class_id)
-        enrollment_logs = list_enrollment_logs_by_class(conn, class_id=class_id, limit=50)
+    enrolled_students = list_students_in_class(class_id)
+    # available_students 需补充 SQLAlchemy 版本实现
+    available_students = []
+    enrollment_logs = list_enrollment_logs_by_class(class_id, limit=50)
+
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render_template(
+            'classes/_class_detail.html',
+            class_item=class_item,
+            enrolled_students=enrolled_students,
+            available_students=available_students,
+            enrollment_logs=enrollment_logs,
+        )
 
     return render_template(
         'classes/manage_students.html',

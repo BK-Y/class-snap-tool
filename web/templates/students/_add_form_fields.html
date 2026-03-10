@@ -1,0 +1,112 @@
+{# 只包含表单字段，不含<form>和JS #}
+<!-- 上半部分：核心信息 -->
+<div class="card mb-3">
+    <div class="card-header bg-primary bg-opacity-10 fw-bold">核心信息（必填）</div>
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-6">
+                <label for="display_name" class="form-label fw-bold">常用名 <span class="required">*</span></label>
+                <input type="text" id="display_name" name="display_name" class="form-control" value="{{ form_data.display_name if form_data else '' }}" placeholder="如：小明" required>
+            </div>
+            <div class="col-md-6">
+                <label for="gender" class="form-label fw-bold">性别 <span class="required">*</span></label>
+                <select id="gender" name="gender" class="form-select" required>
+                    <option value="">请选择</option>
+                    <option value="男" {% if form_data and form_data.gender == '男' %}selected{% endif %}>男</option>
+                    <option value="女" {% if form_data and form_data.gender == '女' %}selected{% endif %}>女</option>
+                    <option value="其他" {% if form_data and form_data.gender == '其他' %}selected{% endif %}>其他</option>
+                </select>
+            </div>
+        </div>
+        <div class="row g-3 align-items-end mt-2">
+            <div class="col-md-12">
+                <label class="form-label fw-bold">出生日期 <span class="required">*</span></label>
+                <div class="input-group">
+                    <select id="birthday_year" name="birthday_year" class="form-select" required style="max-width: 140px;">
+                        <option value="">选择年份</option>
+                        {% set current_year = 2026 %}
+                        {% for y in range(current_year-6, current_year-18, -1) %}
+                            <option value="{{ y }}" {% if form_data and form_data.birthday_year == y %}selected{% endif %}>{{ y }}（{{ current_year - y }}岁）</option>
+                        {% endfor %}
+                    </select>
+                    <span class="input-group-text">年</span>
+                    <select id="birthday_month" name="birthday_month" class="form-select" required style="max-width: 80px;">
+                        {% for m in range(0, 13) %}
+                            <option value="{{ m }}" {% if form_data and form_data.birthday_month == m %}selected{% endif %}>{{ m }}</option>
+                        {% endfor %}
+                    </select>
+                    <span class="input-group-text">月</span>
+                    <select id="birthday_day" name="birthday_day" class="form-select" required style="max-width: 80px;">
+                        {% for d in range(0, 32) %}
+                            <option value="{{ d }}" {% if form_data and form_data.birthday_day == d %}selected{% endif %}>{{ d }}</option>
+                        {% endfor %}
+                    </select>
+                    <span class="input-group-text">日</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- 下半部分：选填证件信息，可多组 -->
+<div class="card mb-3">
+    <div class="card-header bg-success bg-opacity-10 fw-bold">证件信息（选填）</div>
+    <div class="card-body" id="id_card_section">
+        <div class="row g-3 mb-2">
+            <div class="col-md-6">
+                <label for="school" class="form-label fw-bold">学校</label>
+                <input type="text" id="school" name="school" class="form-control" value="{{ form_data.school if form_data else '' }}" placeholder="如：XX中学">
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-bold">年级</label>
+                <div class="row g-2">
+                    <div class="col-auto">
+                        <select id="grade_type" name="grade_type" class="form-select" style="max-width: 80px;">
+                            <option value="G" {% if form_data and (form_data.grade_type == 'G' or not form_data.grade_type) %}selected{% endif %}>G</option>
+                            <option value="Y" {% if form_data and form_data.grade_type == 'Y' %}selected{% endif %}>Y</option>
+                        </select>
+                    </div>
+                    <div class="col">
+                        <select id="grade" name="grade" class="form-select">
+                            <option value="">选择年级</option>
+                            {% if form_data and form_data.grade_type == 'Y' %}
+                                {% for n in range(1, 14) %}
+                                    <option value="{{ n }}" {% if form_data and form_data.grade == n|string %}selected{% endif %}>{{ n }}</option>
+                                {% endfor %}
+                            {% else %}
+                                {% for n in range(1, 13) %}
+                                    <option value="{{ n }}" {% if form_data and form_data.grade == n|string %}selected{% endif %}>{{ n }}</option>
+                                {% endfor %}
+                            {% endif %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="id_card_list">
+            <div class="row g-3 align-items-end id-card-group">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">证件姓名</label>
+                    <input type="text" name="id_card_name[]" class="form-control" placeholder="如：张小明">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">证件类型</label>
+                    <select name="id_card_type[]" class="form-select">
+                        <option value="">请选择</option>
+                        {% for doc_type in doc_types %}
+                            <option value="{{ doc_type.type_code }}">{{ doc_type.label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">证件号码</label>
+                    <input type="text" name="id_card_number[]" class="form-control" placeholder="如：身份证号/护照号">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="d-flex gap-2 mt-3">
+    <button type="submit" name="submit_action" value="save_add" class="btn btn-primary">保存并新增</button>
+    <button type="submit" name="submit_action" value="save_back" class="btn btn-success">保存并返回</button>
+    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+</div>

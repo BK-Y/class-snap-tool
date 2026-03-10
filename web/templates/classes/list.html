@@ -173,7 +173,7 @@ updateCompetitionEventFields();
 				{% else %}{{ c.status }}{% endif %}
 			</td>
 			<td>{{ c.student_count }}</td>
-			<td><a href="{{ url_for('classes.manage_class_students', class_id=c.id) }}">班级学员管理</a></td>
+			<td><a href="{{ url_for('classes.manage_class_students', class_id=c.id) }}" data-load-detail>班级学员管理</a></td>
 		</tr>
 		{% endfor %}
 	</tbody>

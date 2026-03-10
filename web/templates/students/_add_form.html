@@ -1,10 +1,10 @@
+{% set form_data = form_data if form_data is defined else namespace() %}
 <div class="form-container">
-    <h2>➕添加学生</h2>
     <!-- 错误提示 -->
     {% if errors %}
-    <div class="error-box">
+    <div class="error-box" id="errorBox">
         <strong>⚠️ 提交失败，请检查以下问题：</strong>
-        <ul>
+        <ul id="errorList">
             {% for error in errors %}
             <li>{{ error }}</li>
             {% endfor %}
@@ -21,70 +21,8 @@
         {% endif %}
     {% endwith %}
 
-    <form method="POST" action="{{ url_for('students.add_student') }}">
-        <div class="card">
-            <div class="card-body">
-                <!-- 姓名（二选一必填） -->
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="display_name">常用称呼 <span class="required">*</span></label>
-                        <input type="text" 
-                               id="display_name" 
-                               name="display_name" 
-                               value="{{ form_data.display_name if form_data else '' }}"
-                               placeholder="如：小明/ Henry">
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>出生年<span class="required">*</span></label>
-                        <input name="birthday_year" maxlength="4" size="4" value="{{ form_data.birthday_year if form_data else '' }}" />
-                    </div>
-                    <div class="form-group">
-                        <label>出生月<span class="required">*</span></label>
-                        <input name="birthday_month" maxlength="2" size="2" value="{{ form_data.birthday_month if form_data else '' }}" />
-                    </div>
-                    <div class="form-group">
-                        <label>出生日<span class="required">*</span></label>
-                        <input name="birthday_day" maxlength="2" size="2" value="{{ form_data.birthday_day if form_data else '' }}" />
-                    </div>
-                    <div class="form-group">
-                        <label>性别 <span class="required">*</span></label>
-                        <div style="margin-top:4px;">
-                            <label><input type="radio" name="gender" value="男" {{ 'checked' if form_data and form_data.gender=='男' else '' }}>男</label>
-                            <label><input type="radio" name="gender" value="女" {{ 'checked' if form_data and form_data.gender=='女' else '' }}>女</label>
-                            <label><input type="radio" name="gender" value="其他" {{ 'checked' if form_data and form_data.gender=='其他' else '' }}>其他</label>
-                            <label><input type="radio" name="gender" value="" {{ 'checked' if form_data and not form_data.gender else '' }}>未填写</label>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="card" id="optional_section" style="margin-top:10px;">
-            <div class="card-header" onclick="toggleOptional()" style="cursor:pointer;">
-                选填信息 <span id="opt_toggle">[展开]</span>
-            </div>
-            <div class="card-body" id="opt_body" style="display:none;">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="legal_name">法定姓名：</label>
-                        <input type="text" id="legal_name" name="legal_name" value="{{ form_data.legal_name if form_data else '' }}" placeholder="如：张小明">
-                    </div>
-                </div>
-                <!-- further optional fields could be added here -->
-            </div>
-        </div>
-
-        <p><button type="submit" class="btn btn-primary">保存</button> <button type="button" class="btn btn-secondary" onclick="closeAddPanel()">取消</button></p>
+    <form id="studentForm" method="POST" action="{{ url_for('students.add_student') }}" autocomplete="off">
+        <input type="hidden" name="submit_action" id="submit_action_flag" value="save_add">
+        {% include 'students/_add_form_fields.html' %}
     </form>
-    <script>
-    function toggleOptional(){
-        const body = document.getElementById('opt_body');
-        const toggle = document.getElementById('opt_toggle');
-        if(body.style.display==='none'){
-            body.style.display='block'; toggle.textContent='[收起]';
-        } else { body.style.display='none'; toggle.textContent='[展开]'; }
-    }
-    </script>
 </div>

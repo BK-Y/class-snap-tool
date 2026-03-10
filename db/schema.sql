@@ -6,7 +6,6 @@ CREATE TABLE IF NOT EXISTS students (
     gender TEXT,                              -- 性别
     birthday TEXT,                            -- 生日
     birthday_cal TEXT,                        -- 生日所使用的日历,默认公历
-    legal_name TEXT                          -- 证件信息（法定，用于赛事报名等，现为可选）
     -- 2026.03 多证件支持，主证件迁移至 student_documents 表
     -- doc_type TEXT NOT NULL,
     -- doc_number TEXT NOT NULL,
@@ -170,7 +169,7 @@ CREATE TABLE IF NOT EXISTS student_operation_logs (
                                                   --   'UPDATE'(修改信息)
                                                   --   'DELETE'(删除学员)
     
-    field_name TEXT,                              -- 修改了哪个字段 (如：'legal_name', 'birthday')
+    field_name TEXT,                              -- 修改了哪个字段 (如：'birthday')
     old_value TEXT,                               -- 修改前的内容 (新增时为 NULL)
     new_value TEXT,                               -- 修改后的内容
     

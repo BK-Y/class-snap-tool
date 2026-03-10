@@ -36,7 +36,6 @@
         {% for s in enrolled_students %}
         <tr>
             <td>{{ s.student_number }}</td>
-            <td>{{ s.legal_name }}</td>
             <td>{{ s.display_name }}</td>
             <td>{{ s.gender or '—' }}</td>
             <td>{{ s.enrolled_at }}</td>

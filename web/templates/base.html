@@ -5,6 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}学员管理系统{% endblock %}</title>
+        <!-- Bootstrap 5 CDN -->
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
         body {
             font-family: "Helvetica Neue", Arial, sans-serif;
@@ -12,30 +15,18 @@
             padding: 0;
             background-color: #f9f9f9;
             color: #333;
+            <meta name="viewport" content="width=device-width, initial-scale=1">
         }
         .container {
-            width: 90%;
+                <div class="row">
             max-width: 1200px;
-            margin: 0 auto;
+                    <aside id="sidebar" class="col-md-3 mb-3">
             padding: 20px;
         }
+                    </aside>
+                    <main class="col">
         header {
-            background-color: #4CAF50;
-            color: white;
-            padding: 1rem 0;
-            text-align: center;
-            margin-bottom: 1rem;
-        }
-        footer {
-            text-align: center;
-            margin-top: 3rem;
-            padding: 1rem 0;
-            color: #777;
-            border-top: 1px solid #eee;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
+                    <main class="col-12">
             margin-top: 1rem;
         }
         th, td {
@@ -53,34 +44,83 @@
 </head>
 <body>
 	{% include 'header.html' %}
-    <div class="container" style="display:flex;">
-        <!-- sidebar area: child templates may override -->
-        <aside id="sidebar" style="width:200px;flex-shrink:0;background:#f9f9f9;padding:12px;">
-            {% block sidebar %}{% endblock %}
-        </aside>
-        <style>
-            #sidebar ul { list-style:none; padding:0; margin:0; }
-            #sidebar li.section { font-size:0.9em; font-weight:bold; margin-top:10px; color:#555; }
-            #sidebar li a { display:block; padding:4px 6px; color:#333; text-decoration:none; border-radius:4px; }
-            #sidebar li a.active { background:#ddd; font-weight:bold; }
-            #sidebar li a:hover { background:#eee; }
-            /* responsive tweaks */
-            @media (max-width: 768px) {
-                .container { flex-direction: column; }
-                #sidebar { width: 100%; margin-bottom: 10px; }
-                #sidebar ul { display: flex; flex-wrap: wrap; gap:4px; }
-                #sidebar li { flex: 1 1 auto; }
-                #main_content { padding: 0; }
-                table { display: block; overflow-x: auto; }
-            }
-        </style>
-        <!-- main content area -->
-        <div id="main_content" style="flex:1;padding:0 12px;">
+    <div class="container">
+        <main>
             {% block content %}{% endblock %}
-        </div>
+        </main>
     </div>
+
+    <!-- detail drawer (slide‑out panel) -->
+
 
 	{% include 'footer.html' %}
 
+    <style>
+        /* drawer styles */
+        .drawer {
+            position: fixed;
+            top: 0;
+            right: -100%;
+            width: 400px;
+            max-width: 90vw;
+            height: 100%;
+            background: #fff;
+            box-shadow: -2px 0 5px rgba(0,0,0,.3);
+            overflow: auto;
+            transition: right .3s ease;
+            z-index: 1000;
+        }
+        .drawer.open { right: 0; }
+        .drawer .close-btn {
+            display: block;
+            text-align: right;
+            padding: 8px;
+        }
+        .drawer .close-btn a { text-decoration:none; font-size:1.2em; }
+        @media (max-width: 600px) {
+            .drawer {
+                width: 100%;
+                right: -100%;
+            }
+        }
+    </style>
+
+    <!-- Bootstrap JS (for dropdowns, modals, etc.) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    // 只用 Bootstrap modal 弹窗显示详情
+    document.addEventListener('click', function(e) {
+        const a = e.target.closest('a[data-load-detail]');
+        if (!a) return;
+        e.preventDefault();
+        fetch(a.href, {headers:{'X-Requested-With':'XMLHttpRequest'}})
+            .then(r => r.text())
+            .then(html => {
+                // 先移除已有的详情modal
+                let modal = document.getElementById('studentDetailModal');
+                if (modal) modal.remove();
+                // 创建新modal
+                const div = document.createElement('div');
+                div.id = 'studentDetailModal';
+                div.innerHTML = html;
+                document.body.appendChild(div);
+                // 兼容 Bootstrap 5 modal
+                const modalEl = div.querySelector('.modal');
+                if (window.bootstrap && modalEl) {
+                    const bsModal = new bootstrap.Modal(modalEl);
+                    bsModal.show();
+                    modalEl.addEventListener('hidden.bs.modal', () => div.remove());
+                }
+            });
+    });
+    function closeDrawer() {
+        // 关闭并移除 modal
+        let modal = document.querySelector('#studentDetailModal .modal');
+        if (modal && window.bootstrap) {
+            const bsModal = bootstrap.Modal.getInstance(modal);
+            if (bsModal) bsModal.hide();
+        }
+    }
+    </script>
 </body>
 </html>

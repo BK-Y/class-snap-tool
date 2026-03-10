@@ -1,0 +1,203 @@
+<form method="POST" id="basic_form">
+    <input type="hidden" name="action" value="edit_basic">
+    <input type="hidden" name="display_name" id="input_display_name" value="{{ student.display_name }}">
+    <input type="hidden" name="gender" id="input_gender" value="{{ student.gender }}">
+    <input type="hidden" name="birthday" id="input_birthday" value="{{ student.birthday or '' }}">
+
+    <div class="mb-3 row">
+        <label class="col-sm-3 col-form-label">学号：</label>
+        <div class="col-sm-9 col-form-label">{{ student.student_number }}</div>
+    </div>
+    <div class="mb-3 row">
+        <label class="col-sm-3 col-form-label">常用称呼：</label>
+        <div class="col-sm-6 col-form-label" id="view_display_name">{{ student.display_name }}</div>
+        <div class="col-sm-3"><button type="button" class="btn btn-outline-primary btn-sm" onclick="openEditModal('display_name', '常用称呼', 'text')">编辑</button></div>
+    </div>
+    <div class="mb-3 row">
+        <label class="col-sm-3 col-form-label">性别：</label>
+        <div class="col-sm-6 col-form-label" id="view_gender">{{ student.gender or '—' }}</div>
+        <div class="col-sm-3"><button type="button" class="btn btn-outline-primary btn-sm" onclick="openEditModal('gender', '性别', 'radio', [{value:'男',label:'男'},{value:'女',label:'女'},{value:'其他',label:'其他'},{value:'',label:'未填写'}])">编辑</button></div>
+    </div>
+    <div class="mb-3 row">
+        <label class="col-sm-3 col-form-label">出生日期：</label>
+        <div class="col-sm-6 col-form-label" id="view_birthday">{{ student.birthday or '—' }}</div>
+        <div class="col-sm-3"><button type="button" class="btn btn-outline-primary btn-sm" onclick="openEditModal('birthday', '出生日期', 'birthday', null, '改为：请选择年月日（月份/日期可选 00 表示未提供）')">编辑</button></div>
+    </div>
+    <div class="mb-3 row">
+        <div class="col-sm-12 text-end">
+            <button type="submit" class="btn btn-success">保存基础信息</button>
+        </div>
+    </div>
+</form>
+
+<h5 class="mt-4">证件信息 <button type="button" class="btn btn-outline-secondary btn-sm" id="addDocBtn">添加证件</button></h5>
+{% if documents and documents|length > 0 %}
+<table class="table table-bordered table-sm mt-2">
+    <thead class="table-light">
+        <tr>
+            <th>类型</th>
+            <th>号码</th>
+            <th>主证件</th>
+            <th>操作</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for doc in documents %}
+        <tr>
+            <td>{{ doc['doc_type']|format_doc_type }}</td>
+            <td>{{ doc['doc_number'] }}</td>
+            <td class="text-center">{% if doc['is_primary'] %}✔{% endif %}</td>
+            <td>
+                <button type="button" class="btn btn-outline-primary btn-sm" data-edit-doc data-id="{{ doc['id'] }}" data-type="{{ doc['doc_type'] }}" data-number="{{ doc['doc_number'] }}">编辑</button>
+                <form method="post" style="display:inline;">
+                    <input type="hidden" name="action" value="set_primary">
+                    <input type="hidden" name="doc_id" value="{{ doc['id'] }}">
+                    {% if not doc['is_primary'] %}
+                    <button type="submit" class="btn btn-outline-success btn-sm">设为主证件</button>
+                    {% endif %}
+                </form>
+                <form method="post" style="display:inline;">
+                    <input type="hidden" name="action" value="delete_doc">
+                    <input type="hidden" name="doc_id" value="{{ doc['id'] }}">
+                    <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('确定删除该证件？')">删除</button>
+                </form>
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="text-muted">暂无证件信息</p>
+{% endif %}
+
+<!-- 证件弹窗和编辑弹窗可复用原有js逻辑 -->
+<div id="add_doc_modal" style="display:none;">
+    <div class="modal-dialog">
+        <div class="modal-content p-3">
+            <h5>添加/编辑证件</h5>
+            <div class="mb-2">
+                <label>类型：</label>
+                <div id="add_doc_type_group" class="d-flex flex-wrap gap-2 mb-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm doc-type-btn" data-value="ID_CARD">身份证</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm doc-type-btn" data-value="HMT_PASS">回乡证</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm doc-type-btn" data-value="PASSPORT">护照</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="more_types_btn">更多…</button>
+                </div>
+                <input type="hidden" id="add_doc_type" value="ID_CARD">
+            </div>
+            <div class="mb-2">
+                <label>号码：</label>
+                <input id="add_doc_number" maxlength="32" class="form-control form-control-sm">
+            </div>
+            <input type="hidden" id="add_doc_is_primary" value="on">
+            <div class="text-end">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeAddDocModal()">取消</button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="submitAddDocModal()">确定</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑字段弹窗 -->
+<div id="edit_modal" style="display:none;">
+    <div class="modal-dialog">
+        <div class="modal-content p-3">
+            <h5 id="modal_title">编辑</h5>
+            <p id="modal_hint" class="text-muted"></p>
+            <div id="modal_input_wrap"></div>
+            <div class="text-end">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeEditModal()">取消</button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="saveEditModal()">确定</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function(){
+// 证件弹窗和编辑弹窗逻辑
+let editingDocId = null;
+function openAddDocModal() {
+    const modal = document.getElementById('add_doc_modal');
+    if (!modal) return;
+    modal.style.display = 'block';
+    document.getElementById('add_doc_type').value = 'ID_CARD';
+    document.getElementById('add_doc_number').value = '';
+    editingDocId = null;
+}
+function closeAddDocModal() {
+    const modal = document.getElementById('add_doc_modal');
+    if (!modal) return;
+    modal.style.display = 'none';
+    editingDocId = null;
+}
+function submitAddDocModal() {
+    const type = document.getElementById('add_doc_type').value;
+    const number = document.getElementById('add_doc_number').value.trim();
+    if (!number) { alert('请输入证件号码'); return; }
+    const form = document.createElement('form');
+    form.method = 'post';
+    form.style.display = 'none';
+    if (editingDocId) {
+        form.innerHTML = '<input name="action" value="update_doc">'
+            + '<input name="doc_id" value="'+editingDocId+'">';
+    } else {
+        form.innerHTML = '<input name="action" value="add_doc">';
+    }
+    form.innerHTML += '<input name="doc_type" value="'+type+'">'
+        + '<input name="doc_number" value="'+number+'">'
+        + '<input name="is_primary" value="on">';
+    document.body.appendChild(form);
+    form.submit();
+}
+function openEditDocModal(id, type, number) {
+    const modal = document.getElementById('add_doc_modal');
+    if (!modal) return;
+    editingDocId = id;
+    document.getElementById('add_doc_type').value = type;
+    document.getElementById('add_doc_number').value = number;
+    modal.style.display = 'block';
+}
+
+// 绑定所有弹窗相关按钮
+function bindModalEvents() {
+    // 添加证件按钮
+    const addBtn = document.getElementById('addDocBtn');
+    if (addBtn) addBtn.onclick = openAddDocModal;
+    // 证件弹窗确定/取消
+    const addDocModal = document.getElementById('add_doc_modal');
+    if (addDocModal) {
+        const btns = addDocModal.querySelectorAll('button');
+        btns.forEach(btn => {
+            if (btn.textContent.includes('取消')) btn.onclick = closeAddDocModal;
+            if (btn.textContent.includes('确定')) btn.onclick = submitAddDocModal;
+        });
+        // 点击遮罩关闭
+        addDocModal.addEventListener('click', function(e){
+            if(e.target === addDocModal){ closeAddDocModal(); }
+        });
+    }
+    // ESC 关闭
+    document.addEventListener('keydown', function(e){
+        if(e.key === 'Escape') closeAddDocModal();
+    });
+    // 编辑证件按钮
+    document.querySelectorAll('button[data-edit-doc]').forEach(btn => {
+        btn.onclick = function(){
+            const id = btn.getAttribute('data-id');
+            const type = btn.getAttribute('data-type');
+            const number = btn.getAttribute('data-number');
+            openEditDocModal(id, type, number);
+        };
+    });
+}
+
+// 挂载全局，供模板调用
+window.openEditDocModal = openEditDocModal;
+window.submitAddDocModal = submitAddDocModal;
+window.closeAddDocModal = closeAddDocModal;
+
+// 立即绑定
+bindModalEvents();
+})();
+</script>

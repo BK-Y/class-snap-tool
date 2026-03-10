@@ -107,14 +107,25 @@
 </style>
     <!-- 错误提示 -->
     {% if errors %}
-    <div class="error-box">
+    <div class="error-box" id="errorBox">
         <strong>⚠️ 提交失败，请检查以下问题：</strong>
-        <ul>
+        <ul id="errorList">
             {% for error in errors %}
             <li>{{ error }}</li>
             {% endfor %}
         </ul>
     </div>
+    <script>
+    window.addEventListener('DOMContentLoaded', function() {
+        var errorBox = document.getElementById('errorBox');
+        if (errorBox) {
+            var errorText = Array.from(errorBox.querySelectorAll('li')).map(li => li.textContent).join('\n');
+            if (errorText) {
+                alert('提交失败：\n' + errorText);
+            }
+        }
+    });
+    </script>
     {% endif %}
 
     <!-- 成功提示 -->
@@ -125,6 +136,51 @@
         </div>
         {% endif %}
     {% endwith %}
+
+    {% if just_added %}
+    <script>
+    window.addEventListener('DOMContentLoaded', function() {
+        alert('学生添加成功！可继续新增下一个。');
+    });
+    </script>
+    {% endif %}
+
+<script>
+// 前端表单校验，发现错误弹窗并阻止提交
+document.addEventListener('DOMContentLoaded', function() {
+    var form = document.querySelector('form');
+    if (!form) return;
+    form.onsubmit = function(e) {
+        var errors = [];
+        var displayName = form.display_name.value.trim();
+        var gender = form.gender ? form.gender.value : '';
+        var year = form.birthday_year ? form.birthday_year.value : '';
+        var month = form.birthday_month ? form.birthday_month.value : '';
+        var day = form.birthday_day ? form.birthday_day.value : '';
+        if (!displayName) {
+            errors.push('常用称呼和法定姓名至少填写一项');
+        }
+        if (!gender) {
+            errors.push('性别为必选项');
+        }
+        if (!year) {
+            errors.push('出生年为必选项');
+        }
+        if (!month) {
+            errors.push('出生月为必选项');
+        }
+        if (!day) {
+            errors.push('出生日为必选项');
+        }
+        if (errors.length > 0) {
+            alert('请修正以下错误：\n' + errors.join('\n'));
+            e.preventDefault();
+            return false;
+        }
+        return true;
+    };
+});
+</script>
 
     <form method="POST" action="{{ url_for('students.add_student') }}">
         
@@ -146,6 +202,7 @@
                                placeholder="如：小明/ Henry">
                     </div>
                 </div>
+                <!-- 性别 -->
                 <div class="info-box">
 				<strong>注意：</strong> 常用称呼和法定姓名 <strong>至少填写一个</strong>
                             <option value="女" {{ 'selected' if form_data and form_data.gender == '女' else '' }}>女</option>
@@ -245,8 +302,6 @@
             <div class="card-body">
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="legal_name">法定姓名</label>
-                        <input type="text" id="legal_name" name="legal_name" value="{{ form_data.legal_name if form_data else '' }}" placeholder="如：张小明">
                     </div>
                 </div>
             </div>

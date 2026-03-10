@@ -27,6 +27,23 @@ class-snap-tool/
 - pip
 - Linux / Windows（均支持）
 
+
+## 配置说明
+
+系统配置通过环境变量驱动，应用启动时会从
+`config.py` 读取设置。支持的变量包括：
+
+* `SECRET_KEY` – Flask 会话密钥，生产环境**必须**设置。
+* `DATABASE_PATH` – SQLite 数据文件路径（默认 `.data/school.db`）。
+  也可指向其他数据库 URI。
+* `HOST`, `PORT`, `DEBUG` – 与运行参数绑定。
+* `FLASK_ENV` – 设为 `production` 时加载生产配置。
+
+可在项目根创建 `.env` 文件并由 `python-dotenv` 加载，或者在
+部署环境中直接设置变量。
+
+> ⚠️ 切勿将敏感密钥硬编码在代码中。
+
 ## 安装与初始化
 
 在项目根目录执行：

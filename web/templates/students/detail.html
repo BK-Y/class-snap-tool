@@ -1,69 +1,35 @@
+
+{% if ajax %}
+<div class="modal show d-block" tabindex="-1" style="background:rgba(0,0,0,0.35);">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">学员详情/编辑 <u>{{ student.student_number }}</u></h5>
+        <button type="button" class="btn-close" aria-label="关闭" onclick="closeDrawer()"></button>
+      </div>
+      <div class="modal-body">
+        {% include 'students/_detail_modal_content.html' %}
+      </div>
+    </div>
+  </div>
+</div>
+{% else %}
 {% extends 'base.html' %}
-
 {% block title %}学员详情/编辑 - {{ super() }} {% endblock %}
-
-{% block sidebar_extra %}
-<ul>
-    <li><a href="{{ url_for('students.index') }}">← 返回列表</a></li>
-    <li class="section">详情</li>
-    <li><a href="#basic_info">基本信息</a></li>
-    <li><a href="#class_info">班级信息</a></li>
-    <li><a href="#documents_section">证件信息</a></li>
-</ul>
-{% endblock %}
-
 {% block content %}
-<h2>学员详情<u>{{ student.student_number }}</u></h2>
-
-<style>
-	.field-row {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		margin: 10px 0;
-	}
-	.field-row label {
-		min-width: 90px;
-	}
-	.field-value {
-		min-width: 220px;
-		padding: 6px 8px;
-		border: 1px solid #ddd;
-		background: #fafafa;
-	}
-	#edit_modal {
-		display: none;
-		position: fixed;
-		inset: 0;
-		background: rgba(0, 0, 0, 0.35);
-		align-items: center;
-		justify-content: center;
-	}
-	#edit_modal .modal-box {
-		background: #fff;
-		padding: 16px;
-		width: 360px;
-		border-radius: 6px;
-	}
-	#edit_modal .modal-actions {
-		margin-top: 12px;
-		display: flex;
-		justify-content: flex-end;
-		gap: 8px;
-	}
-	#edit_modal input,
-	#edit_modal select {
-		width: 100%;
-		padding: 6px;
-		box-sizing: border-box;
-	}
-	#add_doc_modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35); align-items: center; justify-content: center; }
-	#add_doc_modal .modal-box { background: #fff; padding: 16px; width: 360px; border-radius: 6px; }
-</style>
+<div class="container py-4">
+  <div class="card">
+    <div class="card-header"><b>学员详情/编辑 <u>{{ student.student_number }}</u></b></div>
+    <div class="card-body">
+      {% include 'students/_detail_modal_content.html' %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% endif %}
 
 <form method="POST" id="basic_form">
 	<input type="hidden" name="action" value="edit_basic">
-	<input type="hidden" name="legal_name" id="input_legal_name" value="{{ student.legal_name }}">
 	<input type="hidden" name="display_name" id="input_display_name" value="{{ student.display_name }}">
 	<input type="hidden" name="gender" id="input_gender" value="{{ student.gender }}">
 	<input type="hidden" name="birthday" id="input_birthday" value="{{ student.birthday or '' }}">
@@ -74,8 +40,6 @@
 	</div>
 	<div class="field-row">
 		<label>法定姓名：</label>
-		<div class="field-value" id="view_legal_name">{{ student.legal_name }}</div>
-		<button type="button" onclick="openEditModal('legal_name', '法定姓名', 'text')">编辑</button>
 	</div>
 	<div class="field-row">
 		<label>常用称呼：</label>
@@ -94,6 +58,7 @@
 	</div>
 	
 	<!-- 班级信息块 -->
+	{% if not ajax %}
 	<h3 id="class_info">班级信息</h3>
 	{% if student_classes and student_classes|length > 0 %}
 	<table border="1" cellpadding="6" style="margin-bottom:1em;">
@@ -114,6 +79,7 @@
 	{% else %}
 	<p style="color:#888;">未报名任何班级</p>
 	{% endif %}
+	{% endif %}
 
 <!-- 证件信息块开始 -->
 	</div> <!-- end main_content -->
@@ -122,36 +88,40 @@
 <!-- 证件信息块开始 -->
 <h3 id="documents_section">证件信息 <button type="button" onclick="openAddDocModal()" style="font-size:0.8em;">添加证件</button></h3>
 {% if documents and documents|length > 0 %}
-<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:1em;">
+<table style="width:100%;border-collapse:collapse;margin-bottom:1em;">
+    <thead>
+        <tr style="background:#e8f5e9;">
+            <th style="padding:6px;border:1px solid #ddd;">类型</th>
+            <th style="padding:6px;border:1px solid #ddd;">号码</th>
+            <th style="padding:6px;border:1px solid #ddd;">主证件</th>
+            <th style="padding:6px;border:1px solid #ddd;">操作</th>
+        </tr>
+    </thead>
+    <tbody>
     {% for doc in documents %}
-    <div class="field-row" style="border:1px solid #ddd;padding:8px;border-radius:4px;align-items:flex-start;">
-        <div style="flex:2;">
-            <strong>类型：</strong>{{ {'ID_CARD': '身份证', 'HMT_PASS': '港澳台通行证', 'PASSPORT': '护照', 'OTHER': '其他'}.get(doc['doc_type'], doc['doc_type']) }}
-        </div>
-        <div style="flex:3;">
-            <strong>号码：</strong>{{ doc['doc_number'] }}
-        </div>
-        <div style="flex:1;">
-            {% if doc['is_primary'] %}<span style="color:green;">✔ 主证件</span>{% endif %}
-        </div>
-        <div style="flex:3;">
-            <button type="button" onclick="openEditDocModal({{ doc['id'] }}, '{{ doc['doc_type'] }}', '{{ doc['doc_number'] }}')">编辑</button>
-            <form method="post" style="display:inline;">
-                <input type="hidden" name="action" value="set_primary">
-                <input type="hidden" name="doc_id" value="{{ doc['id'] }}">
-                {% if not doc['is_primary'] %}
-                <button type="submit">设为主证件</button>
-                {% endif %}
-            </form>
-            <form method="post" style="display:inline;">
-                <input type="hidden" name="action" value="delete_doc">
-                <input type="hidden" name="doc_id" value="{{ doc['id'] }}">
-                <button type="submit" onclick="return confirm('确定删除该证件？')">删除</button>
-            </form>
-        </div>
-    </div>
+        <tr>
+            <td style="padding:6px;border:1px solid #ddd;">{{ doc['doc_type']|format_doc_type }}</td>
+            <td style="padding:6px;border:1px solid #ddd;">{{ doc['doc_number'] }}</td>
+            <td style="padding:6px;border:1px solid #ddd; text-align:center;">{% if doc['is_primary'] %}✔{% endif %}</td>
+            <td style="padding:6px;border:1px solid #ddd;">
+                <button type="button" onclick="openEditDocModal({{ doc['id'] }}, '{{ doc['doc_type'] }}', '{{ doc['doc_number'] }}')">编辑</button>
+                <form method="post" style="display:inline;">
+                    <input type="hidden" name="action" value="set_primary">
+                    <input type="hidden" name="doc_id" value="{{ doc['id'] }}">
+                    {% if not doc['is_primary'] %}
+                    <button type="submit">设为主证件</button>
+                    {% endif %}
+                </form>
+                <form method="post" style="display:inline;">
+                    <input type="hidden" name="action" value="delete_doc">
+                    <input type="hidden" name="doc_id" value="{{ doc['id'] }}">
+                    <button type="submit" onclick="return confirm('确定删除该证件？')">删除</button>
+                </form>
+            </td>
+        </tr>
     {% endfor %}
-</div>
+    </tbody>
+</table>
 {% else %}
 <p style="color:#888;">暂无证件信息</p>
 {% endif %}
@@ -369,7 +339,7 @@ function saveEditModal() {
 		const input = document.getElementById('modal_input');
 		newValue = input ? input.value.trim() : '';
 	}
-	if ((editingField === 'legal_name' || editingField === 'display_name') && !newValue) {
+	if ((editingField === 'display_name') && !newValue) {
 		alert('该字段不能为空');
 		return;
 	}
@@ -592,5 +562,3 @@ function closeAddDocModal() {
     document.querySelector('#add_doc_modal .modal-box h3').textContent = '添加证件';
 }
 </script>
-
-{% endblock %}
