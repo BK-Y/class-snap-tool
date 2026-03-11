@@ -24,6 +24,11 @@ class BaseConfig:
     SQLALCHEMY_DATABASE_URI = "sqlite:///" + DATABASE_PATH
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
+    # when true (and DEBUG), the initialization helper will drop all tables
+    # on startup.  This is useful for resetting a development database but
+    # should normally be off so that data is preserved.
+    RESET_DB = os.getenv("RESET_DB", "0") in {"1", "true", "True"}
+
     # host/port defaults (run.py already reads from env variables directly but
     # keeping them here for consistency)
     HOST = os.getenv("HOST", "127.0.0.1")

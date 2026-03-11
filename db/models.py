@@ -17,6 +17,8 @@ class StudentDocument(db.Model):
     student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False)
     doc_type = db.Column(db.String(32), nullable=False)
     doc_number = db.Column(db.String(64), nullable=False)
+    # 新字段：证件上显示的姓名
+    doc_name = db.Column(db.String(64), nullable=True)
     is_primary = db.Column(db.Boolean, default=False)
     __table_args__ = (db.UniqueConstraint('student_id', 'doc_type'),)
 
@@ -33,6 +35,10 @@ class Class(db.Model):
     level = db.Column(db.String(32), nullable=False)
     group_number = db.Column(db.Integer, nullable=False)
     status = db.Column(db.String(16), default='active')
+    # additional metadata
+    teacher = db.Column(db.String(64), nullable=True)
+    class_time = db.Column(db.String(64), nullable=True)  # e.g. 周二 18:00-20:00
+    start_date = db.Column(db.String(32), nullable=True)  # e.g. 2026-03-15
     __table_args__ = (db.UniqueConstraint('type', 'level', 'group_number'),)
 
 class Enrollment(db.Model):

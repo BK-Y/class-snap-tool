@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}学员管理系统{% endblock %}</title>
         <!-- Bootstrap 5 CDN -->
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href="{{ url_for('static', filename='bootstrap/bootstrap.min.css') }}" rel="stylesheet">
         <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
         body {
@@ -86,17 +86,29 @@
     </style>
 
     <!-- Bootstrap JS (for dropdowns, modals, etc.) -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='bootstrap/bootstrap.bundle.min.js') }}"></script>
     <script>
     // 只用 Bootstrap modal 弹窗显示详情
     document.addEventListener('click', function(e) {
         const a = e.target.closest('a[data-load-detail]');
         if (!a) return;
+        // remember URL for later reloads
+        window.currentDetailUrl = a.href;
+        // if another modal is currently open, hide it so clicks don't land on its
+        // buttons (which could trigger delete confirmations).
+        const existing = document.querySelector('#studentDetailModal .modal');
+        if (existing && window.bootstrap) {
+            const inst = bootstrap.Modal.getInstance(existing);
+            if (inst) inst.hide();
+        }
+        let oldDiv = document.getElementById('studentDetailModal');
+        if (oldDiv) oldDiv.remove();
+
         e.preventDefault();
         fetch(a.href, {headers:{'X-Requested-With':'XMLHttpRequest'}})
             .then(r => r.text())
             .then(html => {
-                // 先移除已有的详情modal
+                // remove any leftover modal element again (safe no-op)
                 let modal = document.getElementById('studentDetailModal');
                 if (modal) modal.remove();
                 // 创建新modal
@@ -104,15 +116,56 @@
                 div.id = 'studentDetailModal';
                 div.innerHTML = html;
                 document.body.appendChild(div);
+                // 在插入后执行其中的脚本标签（ajax加载时默认不执行）
+                div.querySelectorAll('script').forEach(script => {
+                    try {
+                        eval(script.textContent);
+                    } catch (err) {
+                        console.error('脚本执行出错', err);
+                    }
+                });
                 // 兼容 Bootstrap 5 modal
                 const modalEl = div.querySelector('.modal');
                 if (window.bootstrap && modalEl) {
                     const bsModal = new bootstrap.Modal(modalEl);
                     bsModal.show();
-                    modalEl.addEventListener('hidden.bs.modal', () => div.remove());
+                    modalEl.addEventListener('hidden.bs.modal', () => {
+                        // remove element and refresh list view when the detail modal closes
+                        div.remove();
+                        if (location.href.includes('/students')) {
+                            // reload only on student-related pages to avoid unexpected refreshes
+                            location.reload();
+                        }
+                    });
                 }
             });
     });
+
+    // helper to refresh only the document‑list section inside the detail modal.
+    // This avoids removing the outer modal element, which would trigger the
+    // hidden.bs.modal listener and cause an unwanted page reload.
+    window.reloadDetailModal = function() {
+        if (!window.currentDetailUrl) return;
+        fetch(window.currentDetailUrl, {headers:{'X-Requested-With':'XMLHttpRequest'}})
+            .then(r => r.text())
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const newArea = doc.querySelector('#enrollmentAndDocsArea');
+                const oldArea = document.querySelector('#enrollmentAndDocsArea');
+                if (newArea && oldArea && oldArea.parentNode) {
+                    oldArea.parentNode.replaceChild(newArea, oldArea);
+                    // execute any inline scripts inside the new fragment
+                    newArea.querySelectorAll('script').forEach(script => {
+                        try { eval(script.textContent); } catch (err) { console.error(err); }
+                    });
+                    // re-initialize event bindings that may have been lost
+                    if (window.initDocArea) window.initDocArea();
+                    if (window.initClassArea) window.initClassArea();
+                }
+            });
+    };
+
     function closeDrawer() {
         // 关闭并移除 modal
         let modal = document.querySelector('#studentDetailModal .modal');
@@ -121,6 +174,120 @@
             if (bsModal) bsModal.hide();
         }
     }
-    </script>
+    // 兼容弹窗基础信息编辑按钮
+        window.toggleEditBasic = function(btn) {
+            // form 用按钮最近的 form，彻底避免 id 冲突和作用域问题
+            var form = btn.closest('form');
+            if (!form) {
+                alert('未找到基础信息表单，无法保存');
+                return;
+            }
+            var card = form.closest('.card');
+            if (!card) {
+                alert('未找到基础信息卡片，无法保存');
+                return;
+            }
+            var editBtnText = card.querySelector('#editBasicBtnText');
+            if (!editBtnText) {
+                alert('未找到编辑按钮');
+                return;
+            }
+            var editing = editBtnText.getAttribute('data-editing') === 'true';
+            function setEditMode(on) {
+                var displayNameView = card.querySelector('#displayNameView');
+                var displayNameInput = card.querySelector('#displayNameInput');
+                var genderView = card.querySelector('#genderView');
+                var genderInput = card.querySelector('#genderInput');
+                var birthdayView = card.querySelector('#birthdayView');
+                var birthdayInput = card.querySelector('#birthdayInput');
+                if (displayNameView && displayNameInput) {
+                    displayNameView.classList.toggle('d-none', on);
+                    displayNameInput.classList.toggle('d-none', !on);
+                }
+                if (genderView && genderInput) {
+                    genderView.classList.toggle('d-none', on);
+                    genderInput.classList.toggle('d-none', !on);
+                }
+                if (birthdayView && birthdayInput) {
+                    birthdayView.classList.toggle('d-none', on);
+                    birthdayInput.classList.toggle('d-none', !on);
+                }
+                editBtnText.textContent = on ? '保存' : '编辑';
+                editBtnText.setAttribute('data-editing', on ? 'true' : 'false');
+            }
+            if (!editing) {
+                setEditMode(true);
+            } else {
+                // AJAX 提交表单
+                var formData = new FormData(form);
+                var action = form.getAttribute('action');
+                // 调试模式下输出表单信息
+                var DEBUG = window.DEBUG_MODE || false;
+                if (DEBUG) {
+                    console.log('[调试] AJAX保存表单信息:', {
+                        form: form,
+                        formAction: form.action,
+                        formGetAttribute: action
+                    });
+                }
+                if (!action) {
+                    alert('表单 action 属性丢失，无法保存');
+                    return;
+                }
+                fetch(action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {'X-Requested-With': 'XMLHttpRequest'}
+                })
+                .then(r => r.text())
+                .then(html => {
+                    // 先移除已有的详情modal
+                    let modal = document.getElementById('studentDetailModal');
+                    if (modal) modal.remove();
+                    // 创建新modal
+                    const div = document.createElement('div');
+                    div.id = 'studentDetailModal';
+                    div.innerHTML = html;
+                    document.body.appendChild(div);
+                    // 兼容 Bootstrap 5 modal
+                    const modalEl = div.querySelector('.modal');
+                    if (window.bootstrap && modalEl) {
+                        const bsModal = new bootstrap.Modal(modalEl);
+                        bsModal.show();
+                        modalEl.addEventListener('hidden.bs.modal', () => {
+                            // remove modal element and reload the page so parent list updates
+                            div.remove();
+                            // only reload if current page uses the modal (prevents weird reloads)
+                            if (location.href.includes('/students')) {
+                                location.reload();
+                            }
+                        });
+                    }
+                });
+            }
+        }
+    // 初始只读
+        window.addEventListener('DOMContentLoaded', function() {
+            var card = document.querySelector('.card');
+            if (card) {
+                var editBtnText = card.querySelector('#editBasicBtnText');
+                if (editBtnText) editBtnText.setAttribute('data-editing', 'false');
+                var displayNameView = card.querySelector('#displayNameView');
+                if (displayNameView) displayNameView.classList.remove('d-none');
+                var displayNameInput = card.querySelector('#displayNameInput');
+                if (displayNameInput) displayNameInput.classList.add('d-none');
+                var genderView = card.querySelector('#genderView');
+                if (genderView) genderView.classList.remove('d-none');
+                var genderInput = card.querySelector('#genderInput');
+                if (genderInput) genderInput.classList.add('d-none');
+                var birthdayView = card.querySelector('#birthdayView');
+                if (birthdayView) birthdayView.classList.remove('d-none');
+                var birthdayInput = card.querySelector('#birthdayInput');
+                if (birthdayInput) birthdayInput.classList.add('d-none');
+            }
+        });
+</script>
+<script>
+</script>
 </body>
 </html>

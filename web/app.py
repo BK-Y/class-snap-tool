@@ -49,10 +49,14 @@ def format_doc_type(code: str) -> str:
         'OTHER': '其他',
     }
     return mapping.get(code, code)
-'''
+# during development we can auto-create missing tables
 with app.app_context():
-    db.init_db()  # 自动初始化数据库
-'''
+    try:
+        from db.schema import init_db
+        init_db()
+    except Exception:
+        pass
+
 app.register_blueprint(students_bp)
 app.register_blueprint(classes_bp)
 app.register_blueprint(index_bp)

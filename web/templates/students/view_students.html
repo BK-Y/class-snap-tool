@@ -116,7 +116,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 <td>{{ s.main_doc['doc_number'] if s.main_doc else '—' }}</td>
                 <td>
                     <a href="{{ url_for('students.student_detail', student_number=s.student_number) }}" data-load-detail class="btn btn-sm btn-outline-primary">详情/编辑</a>
-                    <a href="{{ url_for('classes.list_classes') }}" class="btn btn-sm btn-outline-secondary">班级</a>
                 </td>
             </tr>
             {% endfor %}

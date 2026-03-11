@@ -41,12 +41,45 @@ def search_students(student_number=None, display_name=None, legal_name=None, gen
     return q.all()
 
 def list_student_documents(student_id):
-    return StudentDocument.query.filter_by(student_id=student_id).order_by(StudentDocument.is_primary.desc(), StudentDocument.id.asc()).all()
+    # 当数据库尚未添加 doc_name 字段时，避免查询崩溃
+    try:
+        return StudentDocument.query.filter_by(student_id=student_id)\
+            .order_by(StudentDocument.is_primary.desc(), StudentDocument.id.asc()).all()
+    except Exception as e:
+        # sqlite 抛出的错误信息会包含 no such column
+        if 'no such column' in str(e):
+            # 退回到不含 doc_name 的原始查询（使用 raw SQL）
+            from sqlalchemy import text
+            sql = text("SELECT id, student_id, doc_type, doc_number, is_primary FROM student_documents WHERE student_id=:sid ORDER BY is_primary DESC, id ASC")
+            rows = db.session.execute(sql, {'sid': student_id}).fetchall()
+            # 手动构造简单对象零钱返回
+            class Tmp:
+                def __getitem__(self, key):
+                    return getattr(self, key)
+            docs = []
+            for r in rows:
+                obj = Tmp()
+                # row is a tuple in fallback mode
+                obj.id = r[0]
+                obj.student_id = r[1]
+                obj.doc_type = r[2]
+                obj.doc_number = r[3]
+                obj.is_primary = r[4]
+                obj.doc_name = None
+                docs.append(obj)
+            return docs
+        raise
 
-def add_student_document(student_id, doc_type, doc_number, is_primary=False):
+def add_student_document(student_id, doc_type, doc_number, doc_name=None, is_primary=False):
     if is_primary:
         StudentDocument.query.filter_by(student_id=student_id).update({"is_primary": False})
-    doc = StudentDocument(student_id=student_id, doc_type=doc_type, doc_number=doc_number, is_primary=is_primary)
+    doc = StudentDocument(
+        student_id=student_id,
+        doc_type=doc_type,
+        doc_number=doc_number,
+        doc_name=doc_name,
+        is_primary=is_primary
+    )
     db.session.add(doc)
     db.session.commit()
     return doc.id
@@ -76,12 +109,20 @@ def update_student(student_number, display_name=None, legal_name=None, gender=No
     db.session.commit()
     return student.id
 
-def update_student_document(doc_id, doc_type, doc_number, is_primary=False):
+def update_student_document(doc_id, doc_type, doc_number, doc_name=None, is_primary=False):
     doc = StudentDocument.query.get(doc_id)
     if not doc:
         return None
+    if is_primary:
+        # clear any other primary documents for this student
+        StudentDocument.query.filter(
+            StudentDocument.student_id == doc.student_id,
+            StudentDocument.id != doc_id
+        ).update({"is_primary": False})
     doc.doc_type = doc_type
     doc.doc_number = doc_number
+    if doc_name is not None:
+        doc.doc_name = doc_name
     doc.is_primary = is_primary
     db.session.commit()
     return doc.id

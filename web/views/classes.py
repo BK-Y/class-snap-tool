@@ -107,18 +107,43 @@ def list_classes():
 
         if not errors:
             try:
+                # optional metadata
+                teacher = (request.form.get('teacher') or '').strip() or None
+                class_time = (request.form.get('class_time') or '').strip() or None
+                start_date = (request.form.get('start_date') or '').strip() or None
                 create_class(
                     class_type=class_type,
                     level=level,
                     group_number=group_number,
                     status=class_status,
+                    teacher=teacher,
+                    class_time=class_time,
+                    start_date=start_date,
                 )
                 flash('班级创建成功', 'success')
                 return redirect(url_for('classes.list_classes'))
             except Exception:
                 errors.append('同类型/同级别/同期数班级已存在')
 
-    classes = list_classes_with_counts()
+    raw = list_classes_with_counts()
+    # convert the query result (Class,count) into plain dicts for Jinja
+    classes = []
+    for cls, cnt in raw:
+        classes.append({
+            'id': cls.id,
+            'type': cls.type,
+            'level': cls.level,
+            'group_number': cls.group_number,
+            'status': cls.status,
+            'teacher': getattr(cls, 'teacher', None),
+            'class_time': getattr(cls, 'class_time', None),
+            'start_date': getattr(cls, 'start_date', None),
+            'student_count': cnt,
+        })
+    # if called via AJAX (e.g. from data-load-detail link) return modal partial
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return render_template('classes/_modal_content.html', classes=classes, errors=errors)
+    # otherwise keep original page as a simple redirect-or-info page
     return render_template('classes/list.html', classes=classes, errors=errors)
 
 

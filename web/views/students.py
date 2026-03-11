@@ -16,7 +16,7 @@ from dao.student_sa_dao import (
     add_doc_type,
 )
 from dao.class_sa_dao import list_classes_with_counts
-from dao.enrollment_sa_dao import list_classes_for_student
+from dao.enrollment_sa_dao import list_classes_for_student, enroll_student, remove_student
 
 students_bp = Blueprint("students", __name__)
 
@@ -138,7 +138,7 @@ def add_student():
             )
             # 添加主证件
             if doc_type and doc_number:
-                add_student_document(student_id, doc_type, doc_number, is_primary=True)
+                add_student_document(student_id, doc_type, doc_number, request.form.get('doc_name','').strip() or None, is_primary=True)
             return jsonify({"success": True, "student_id": student_id, "student_number": student_number})
         except Exception as e:
             errors.append(f'数据库错误：{str(e)}')
@@ -154,7 +154,36 @@ def student_detail(student_number):
     if not student:
         return "学员不存在", 404
     documents = list_student_documents(student.id)
-    student_classes = list_classes_for_student(student.id)
+    raw_classes = list_classes_for_student(student.id)
+    # normalize to dicts for easier templating
+    student_classes = []
+    for cls, enrolled_at in raw_classes:
+        student_classes.append({
+            'id': cls.id,
+            'type': cls.type,
+            'level': cls.level,
+            'group_number': cls.group_number,
+            'status': cls.status,
+            'enrolled_at': enrolled_at.strftime('%Y-%m-%d %H:%M') if enrolled_at else None,
+            'teacher': getattr(cls, 'teacher', None),
+            'class_time': getattr(cls, 'class_time', None),
+            'start_date': getattr(cls, 'start_date', None),
+        })
+    # for transfer dropdown, also normalize
+    raw_all = list_classes_with_counts()
+    all_classes = []
+    for cls, count in raw_all:
+        all_classes.append({
+            'id': cls.id,
+            'type': cls.type,
+            'level': cls.level,
+            'group_number': cls.group_number,
+            'status': cls.status,
+            'student_count': count,
+            'teacher': getattr(cls, 'teacher', None),
+            'class_time': getattr(cls, 'class_time', None),
+            'start_date': getattr(cls, 'start_date', None),
+        })
     doc_types = []
     if request.method == 'POST':
         action = request.form.get('action')
@@ -174,21 +203,47 @@ def student_detail(student_number):
         elif action == 'add_doc':
             doc_type = request.form.get('doc_type', '').strip()
             doc_number = request.form.get('doc_number', '').strip()
-            is_primary = True
+            # checkbox 值为 "on" 时表示勾选
+            is_primary = request.form.get('is_primary') == 'on'
+            docs = list_student_documents(student.id)
+            # first document for this student should always be primary
+            if not docs:
+                is_primary = True
+            else:
+                # if a primary already exists, ignore any attempt to set another one
+                if any(d.is_primary for d in docs):
+                    is_primary = False
             if doc_type and doc_number:
-                try:
-                    label = doc_type
-                    if doc_type.startswith('PASSPORT-'):
-                        country = doc_type.split('-',1)[1]
-                        label = f'护照-{country}'
-                    add_doc_type(doc_type, label)
-                except Exception:
-                    pass
-                add_student_document(student.id, doc_type, doc_number, is_primary)
+                # prevent duplicate type
+                existing = [d for d in docs if d.doc_type == doc_type]
+                if existing:
+                    flash('该类型证件已存在，无法添加', 'error')
+                else:
+                    try:
+                        label = doc_type
+                        if doc_type.startswith('PASSPORT-'):
+                            country = doc_type.split('-',1)[1]
+                            label = f'护照-{country}'
+                        add_doc_type(doc_type, label)
+                    except Exception:
+                        pass
+                    add_student_document(
+                        student.id,
+                        doc_type,
+                        doc_number,
+                        request.form.get('doc_name','').strip() or None,
+                        is_primary
+                    )
         elif action == 'delete_doc':
             doc_id = request.form.get('doc_id')
             if doc_id:
-                delete_student_document(int(doc_id))
+                # prevent removal of primary doc
+                docs = list_student_documents(student.id)
+                target = next((d for d in docs if d.id == int(doc_id)), None)
+                if target and target.is_primary:
+                    flash('主证件不能被删除', 'error')
+                else:
+                    delete_student_document(int(doc_id))
         elif action == 'set_primary':
             doc_id = request.form.get('doc_id')
             if doc_id:
@@ -197,12 +252,56 @@ def student_detail(student_number):
             doc_id = request.form.get('doc_id')
             doc_type = request.form.get('doc_type','').strip()
             doc_number = request.form.get('doc_number','').strip()
+            doc_name = request.form.get('doc_name','').strip() or None
+            is_primary = request.form.get('is_primary') == 'on'
+            docs = list_student_documents(student.id)
             if doc_id and doc_type and doc_number:
+                current = next((d for d in docs if d.id == int(doc_id)), None)
+                if current is None:
+                    flash('未找到证件记录', 'error')
+                else:
+                    # disallow unsetting primary
+                    if current.is_primary and not is_primary:
+                        flash('主证件不能取消设定', 'error')
+                    # disallow replacing primary with another
+                    elif is_primary and any(d.is_primary and d.id != int(doc_id) for d in docs):
+                        flash('主证件已经存在，无法替换', 'error')
+                    else:
+                        # check duplicates excluding self
+                        others = [d for d in docs if d.id != int(doc_id) and d.doc_type == doc_type]
+                        if others:
+                            flash('该类型证件已存在，无法修改', 'error')
+                        else:
+                            try:
+                                update_student_document(
+                                    int(doc_id),
+                                    doc_type,
+                                    doc_number,
+                                    doc_name,
+                                    is_primary
+                                )
+                            except Exception:
+                                flash('更新证件时发生错误', 'error')
+        elif action == 'remove_class':
+            cid = request.form.get('class_id')
+            if cid:
                 try:
-                    update_student_document(int(doc_id), doc_type, doc_number, False)
+                    remove_student(int(cid), student.id)
+                    flash('已将学员从班级移除', 'success')
                 except Exception:
-                    flash('同类型证件已存在，无法修改', 'error')
-        # 操作后刷新数据
+                    flash('移除班级时出错', 'error')
+        elif action == 'transfer_class':
+            from_c = request.form.get('from_class_id')
+            to_c = request.form.get('to_class_id')
+            if from_c and to_c and from_c != to_c:
+                try:
+                    remove_student(int(from_c), student.id)
+                    enroll_student(int(to_c), student.id)
+                    flash('已将学员转班', 'success')
+                except Exception:
+                    flash('转班时发生错误', 'error')
+        # 操作后刷新数据，重新查询 student 及相关数据
+        student = next(iter(search_students(student_number=student_number)), None)
         documents = list_student_documents(student.id)
         student_classes = list_classes_for_student(student.id)
         doc_types = list_doc_types()
@@ -222,11 +321,16 @@ def student_detail(student_number):
     if not doc_types:
         doc_types = list_doc_types()
     ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    # always use the modal-style fragment; when accessed directly it will
+    # simply embed the content inside the page body (the surrounding
+    # <div class="modal"> is harmless). This avoids maintaining two
+    # nearly-identical templates.
     return render_template(
-        "students/detail.html",
+        "students/_detail_modal_content.html",
         student=student,
         documents=documents,
         student_classes=student_classes,
+        all_classes=all_classes,
         doc_types=doc_types,
         form_data=default_form_data,
         current_year=current_year,

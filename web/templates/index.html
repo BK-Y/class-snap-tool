@@ -9,7 +9,7 @@
 <p>本系统旨在协助培训机构管理学生证件、班级报名及成长记录，提供学员信息维护、班级管理及证件跟踪等功能。
 </p>
 <p><a href="{{ url_for('students.index') }}">学员管理</a></p>
-<p><a href="{{ url_for('classes.list_classes') }}">班级管理</a></p>
+<p><a href="{{ url_for('classes.list_classes') }}" data-load-detail>班级管理</a></p>
 
 
 {% endblock %}

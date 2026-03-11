@@ -1,203 +1,489 @@
-<form method="POST" id="basic_form">
-    <input type="hidden" name="action" value="edit_basic">
-    <input type="hidden" name="display_name" id="input_display_name" value="{{ student.display_name }}">
-    <input type="hidden" name="gender" id="input_gender" value="{{ student.gender }}">
-    <input type="hidden" name="birthday" id="input_birthday" value="{{ student.birthday or '' }}">
-
-    <div class="mb-3 row">
-        <label class="col-sm-3 col-form-label">学号：</label>
-        <div class="col-sm-9 col-form-label">{{ student.student_number }}</div>
-    </div>
-    <div class="mb-3 row">
-        <label class="col-sm-3 col-form-label">常用称呼：</label>
-        <div class="col-sm-6 col-form-label" id="view_display_name">{{ student.display_name }}</div>
-        <div class="col-sm-3"><button type="button" class="btn btn-outline-primary btn-sm" onclick="openEditModal('display_name', '常用称呼', 'text')">编辑</button></div>
-    </div>
-    <div class="mb-3 row">
-        <label class="col-sm-3 col-form-label">性别：</label>
-        <div class="col-sm-6 col-form-label" id="view_gender">{{ student.gender or '—' }}</div>
-        <div class="col-sm-3"><button type="button" class="btn btn-outline-primary btn-sm" onclick="openEditModal('gender', '性别', 'radio', [{value:'男',label:'男'},{value:'女',label:'女'},{value:'其他',label:'其他'},{value:'',label:'未填写'}])">编辑</button></div>
-    </div>
-    <div class="mb-3 row">
-        <label class="col-sm-3 col-form-label">出生日期：</label>
-        <div class="col-sm-6 col-form-label" id="view_birthday">{{ student.birthday or '—' }}</div>
-        <div class="col-sm-3"><button type="button" class="btn btn-outline-primary btn-sm" onclick="openEditModal('birthday', '出生日期', 'birthday', null, '改为：请选择年月日（月份/日期可选 00 表示未提供）')">编辑</button></div>
-    </div>
-    <div class="mb-3 row">
-        <div class="col-sm-12 text-end">
-            <button type="submit" class="btn btn-success">保存基础信息</button>
-        </div>
-    </div>
-</form>
-
-<h5 class="mt-4">证件信息 <button type="button" class="btn btn-outline-secondary btn-sm" id="addDocBtn">添加证件</button></h5>
-{% if documents and documents|length > 0 %}
-<table class="table table-bordered table-sm mt-2">
-    <thead class="table-light">
-        <tr>
-            <th>类型</th>
-            <th>号码</th>
-            <th>主证件</th>
-            <th>操作</th>
-        </tr>
-    </thead>
-    <tbody>
-    {% for doc in documents %}
-        <tr>
-            <td>{{ doc['doc_type']|format_doc_type }}</td>
-            <td>{{ doc['doc_number'] }}</td>
-            <td class="text-center">{% if doc['is_primary'] %}✔{% endif %}</td>
-            <td>
-                <button type="button" class="btn btn-outline-primary btn-sm" data-edit-doc data-id="{{ doc['id'] }}" data-type="{{ doc['doc_type'] }}" data-number="{{ doc['doc_number'] }}">编辑</button>
-                <form method="post" style="display:inline;">
-                    <input type="hidden" name="action" value="set_primary">
-                    <input type="hidden" name="doc_id" value="{{ doc['id'] }}">
-                    {% if not doc['is_primary'] %}
-                    <button type="submit" class="btn btn-outline-success btn-sm">设为主证件</button>
-                    {% endif %}
-                </form>
-                <form method="post" style="display:inline;">
-                    <input type="hidden" name="action" value="delete_doc">
-                    <input type="hidden" name="doc_id" value="{{ doc['id'] }}">
-                    <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('确定删除该证件？')">删除</button>
-                </form>
-            </td>
-        </tr>
-    {% endfor %}
-    </tbody>
-</table>
-{% else %}
-<p class="text-muted">暂无证件信息</p>
-{% endif %}
-
-<!-- 证件弹窗和编辑弹窗可复用原有js逻辑 -->
-<div id="add_doc_modal" style="display:none;">
-    <div class="modal-dialog">
-        <div class="modal-content p-3">
-            <h5>添加/编辑证件</h5>
-            <div class="mb-2">
-                <label>类型：</label>
-                <div id="add_doc_type_group" class="d-flex flex-wrap gap-2 mb-2">
-                    <button type="button" class="btn btn-outline-secondary btn-sm doc-type-btn" data-value="ID_CARD">身份证</button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm doc-type-btn" data-value="HMT_PASS">回乡证</button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm doc-type-btn" data-value="PASSPORT">护照</button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" id="more_types_btn">更多…</button>
+<div class="modal fade" tabindex="-1">
+    <div class="modal-dialog modal-xl" style="max-width:90vw;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">学员详情{{ student.student_number }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <div class="container-fluid py-3 px-2 px-lg-3">
+                    <div class="row justify-content-center">
+                        <!-- expand to full width on large screens -->
+                        <div class="col-12 col-lg-12 col-md-10">
+                            <div class="row">
+                                <div class="col-12">
+                                    <div class="card shadow-sm border-0 mb-4">
+                                        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-0"><i class="bi bi-person-circle me-2"></i>基础信息</h5>
+                                        </div>
+                                        <form id="basicInfoForm" method="POST" action="/students/detail/{{ student.student_number }}">
+                                            <div class="text-end mb-2">
+                                                <button id="editBasicBtn" class="btn btn-light btn-sm text-primary" type="button" onclick="toggleEditBasic(this)"><span id="editBasicBtnText">编辑</span></button>
+                                            </div>
+                                            <div class="card-body bg-light">
+                                        <div class="row mb-3">
+                                            <div class="col-4 text-end text-secondary">学号：</div>
+                                            <div class="col-8 fw-bold">
+                                                <span id="studentNumberView">{{ student.student_number }}</span>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-4 text-end text-secondary">常用称呼：</div>
+                        <div class="col-8">
+                            <span id="displayNameView">{{ student.display_name }}</span>
+                            <input type="text" class="form-control form-control-sm d-none" id="displayNameInput" name="display_name" value="{{ student.display_name }}">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-4 text-end text-secondary">性别：</div>
+                        <div class="col-8">
+                            <span id="genderView">{{ student.gender or '—' }}</span>
+                            <div id="genderInput" class="d-none">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="gender" id="genderMale" value="男" {% if student.gender=='男' %}checked{% endif %}>
+                                    <label class="form-check-label" for="genderMale">男</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="gender" id="genderFemale" value="女" {% if student.gender=='女' %}checked{% endif %}>
+                                    <label class="form-check-label" for="genderFemale">女</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="gender" id="genderOther" value="其他" {% if student.gender=='其他' %}checked{% endif %}>
+                                    <label class="form-check-label" for="genderOther">其他</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="gender" id="genderNone" value="" {% if not student.gender %}checked{% endif %}>
+                                    <label class="form-check-label" for="genderNone">未填写</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row mb-1">
+                        <div class="col-4 text-end text-secondary">出生日期：</div>
+                        <div class="col-8">
+                            <span id="birthdayView">{{ student.birthday or '—' }}</span>
+                            <div id="birthdayInput" class="d-none" style="display:flex;gap:8px;align-items:center;">
+                                <select name="birthday_year" class="form-select form-select-sm" style="width:auto;">
+                                    <option value="">年</option>
+                                    {% set byear = student.birthday.split('-')[0] if student.birthday else '' %}
+                                    {% for y in range(current_year-18, current_year-5) %}
+                                    <option value="{{ y }}" {% if byear == y|string %}selected{% endif %}>{{ y }}</option>
+                                    {% endfor %}
+                                </select>
+                                <span>年</span>
+                                <select name="birthday_month" class="form-select form-select-sm" style="width:auto;">
+                                    <option value="">月</option>
+                                    {% set bmonth = student.birthday.split('-')[1] if student.birthday else '' %}
+                                    <option value="00" {% if bmonth == '00' %}selected{% endif %}>00(未知)</option>
+                                    {% for m in range(1, 13) %}
+                                    <option value="{{ '%02d' % m }}" {% if bmonth == '%02d' % m %}selected{% endif %}>{{ '%02d' % m }}</option>
+                                    {% endfor %}
+                                </select>
+                                <span>月</span>
+                                <select name="birthday_day" class="form-select form-select-sm" style="width:auto;">
+                                    <option value="">日</option>
+                                    {% set bday = student.birthday.split('-')[2] if student.birthday else '' %}
+                                    <option value="00" {% if bday == '00' %}selected{% endif %}>00(未知)</option>
+                                    {% for d in range(1, 32) %}
+                                    <option value="{{ '%02d' % d }}" {% if bday == '%02d' % d %}selected{% endif %}>{{ '%02d' % d }}</option>
+                                    {% endfor %}
+                                </select>
+                                <span>日</span>
+                            </div>
+                        </div>
+                    </div>
+                    <input type="hidden" name="action" value="edit_basic">
                 </div>
-                <input type="hidden" id="add_doc_type" value="ID_CARD">
+                </form>
             </div>
-            <div class="mb-2">
-                <label>号码：</label>
-                <input id="add_doc_number" maxlength="32" class="form-control form-control-sm">
+</div>
+
+
+            <!-- 学员所在班级和证件区容器 -->
+            <div id="enrollmentAndDocsArea">
+            <!-- 学员所在班级信息 -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-building me-2"></i>班级信息</h5>
+                </div>
+                <div class="card-body bg-light">
+                    {% if student_classes and student_classes|length > 0 %}
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>班级</th>
+                                <th>状态</th>
+                                <th>老师</th>
+                                <th>上课时间</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for c in student_classes %}
+                            <tr>
+                                <td>{{ c.type }} {{ c.level }} 第{{ c.group_number }}期</td>
+                                <td>{{ c.status }}</td>
+                                <td>{{ c.teacher or '—' }}</td>
+                                <td>{{ c.class_time or '—' }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-danger remove-class-btn" type="button" data-class-id="{{ c.id }}">移除</button>
+                                    <button class="btn btn-sm btn-outline-secondary transfer-class-btn" type="button" data-class-id="{{ c.id }}">转班</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p class="text-muted mb-0">未报名任何班级</p>
+                    {% endif %}
+                </div>
             </div>
-            <input type="hidden" id="add_doc_is_primary" value="on">
-            <div class="text-end">
-                <button type="button" class="btn btn-secondary btn-sm" onclick="closeAddDocModal()">取消</button>
-                <button type="button" class="btn btn-primary btn-sm" onclick="submitAddDocModal()">确定</button>
+
+                </div> <!-- end col for class card -->
+            </div> <!-- end row for class -->
+
+            <!-- 转班弹窗 -->
+            <div class="modal fade" id="transferModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">转班</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="transferForm">
+                                <input type="hidden" name="action" value="transfer_class">
+                                <input type="hidden" id="fromClassId" name="from_class_id" value="">
+                                <div class="mb-3">
+                                    <label for="toClassSelect" class="form-label">选择目标班级</label>
+                                    <select id="toClassSelect" name="to_class_id" class="form-select">
+                                        <option value="">(请选择)</option>
+                                        {% for c in all_classes %}
+                                        <option value="{{c.id}}">{{c.type}} {{c.level}} 第{{c.group_number}}期{% if c.teacher %} · {{c.teacher}}{% endif %}{% if c.status %} ({{c.status}}){% endif %}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                            <button type="button" id="doTransferBtn" class="btn btn-primary">确定</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-12">
+                    <div class="card shadow-sm border-0 mb-4">
+                        <form id="docInfoForm" method="POST" action="/students/detail/{{ student.student_number }}">
+                  <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                      <h5 class="mb-0"><i class="bi bi-credit-card-2-front me-2"></i>证件信息</h5>
+                      <button id="addDocBtn" class="btn btn-light btn-sm text-success" type="button"><span id="addDocBtnText">添加证件</span></button>
+                  </div>
+                  <div class="card-body bg-light">
+                    {% if documents and documents|length > 0 %}
+                    <div class="row g-3">
+                        {% for doc in documents %}
+                        <div class="col-12 col-md-6">
+                            <div class="card">
+                                <div class="card-body p-2">
+                                    <div><strong>类型：</strong>{{ doc['doc_type']|format_doc_type }}{% if doc['is_primary'] %}<span class="badge bg-success ms-1">主</span>{% endif %}
+                                        &nbsp;&nbsp;<strong>姓名：</strong>{{ doc['doc_name'] or '—' }}</div>
+                                    <div><strong>号码：</strong><span class="font-monospace">{{ doc['doc_number'] }}</span></div>
+                                    <div class="mt-2 text-end">
+                                        <button class="btn btn-outline-primary btn-sm me-1 edit-doc-btn" type="button"
+                                                data-doc-id="{{ doc['id'] }}"
+                                                data-doc-type="{{ doc['doc_type'] }}"
+                                                data-doc-name="{{ doc['doc_name'] or '' }}"
+                                                data-doc-number="{{ doc['doc_number'] }}"
+                                                data-doc-primary="{{ '1' if doc['is_primary'] else '' }}">编辑</button>
+                                        <button class="btn btn-outline-danger btn-sm delete-doc-btn" type="button" data-doc-id="{{ doc['id'] }}" {% if doc['is_primary'] %}disabled title="主证件不能删除"{% endif %}>删除</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted mb-0">暂无证件信息</p>
+                    {% endif %}
+                  </div>
+                </form>
+                <!-- 证件编辑弹窗结构预留 -->
+                <div class="modal fade" id="docEditModal" tabindex="-1">
+                    <style>
+                        /* differentiate document edit modal */
+                        #docEditModal .modal-content { background-color: #f0f8ff; }
+                        #docEditModal .modal-header { background-color: #e0f0ff; }
+                    </style>
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="docEditModalLabel">编辑证件</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                            </div>
+                            <form id="docEditForm">
+                                <input type="hidden" name="action" id="docEditAction" value="add_doc">
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">证件类型</label>
+                                        <div id="docTypeGroup" class="d-flex flex-wrap gap-2">
+                                            <!-- radio buttons injected by JS -->
+                                        </div>
+                                        <input type="hidden" id="docType" name="doc_type"> <!-- actual value stored here -->
+                                        <div class="mt-2 d-none" id="passportCountryWrapper">
+                                            <div class="input-group input-group-sm">
+                                                <select id="passportCountry" class="form-select">
+                                                    <option value="">(请选择国家)</option>
+                                                    <option>美国</option>
+                                                    <option>加拿大</option>
+                                                    <option>澳大利亚</option>
+                                                    <option>法国</option>
+                                                    <option value="__other">其他...</option>
+                                                </select>
+                                                <input type="text" id="passportCountryOther" class="form-control d-none" placeholder="手动输入国家">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="docName" class="form-label">证件姓名</label>
+                                        <input type="text" class="form-control" id="docName" name="doc_name">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="docNumber" class="form-label">证件号码</label>
+                                        <input type="text" class="form-control" id="docNumber" name="doc_number">
+                                    </div>
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input" type="checkbox" id="isPrimaryDoc" name="is_primary">
+                                        <label class="form-check-label" for="isPrimaryDoc">设为主证件</label>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                                    <button type="submit" class="btn btn-primary">保存</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- 编辑字段弹窗 -->
-<div id="edit_modal" style="display:none;">
-    <div class="modal-dialog">
-        <div class="modal-content p-3">
-            <h5 id="modal_title">编辑</h5>
-            <p id="modal_hint" class="text-muted"></p>
-            <div id="modal_input_wrap"></div>
-            <div class="text-end">
-                <button type="button" class="btn btn-secondary btn-sm" onclick="closeEditModal()">取消</button>
-                <button type="button" class="btn btn-primary btn-sm" onclick="saveEditModal()">确定</button>
-            </div>
-        </div>
-    </div>
-</div>
-
+<!-- 文档相关脚本，仅在详情弹窗加载时插入 -->
 <script>
-(function(){
-// 证件弹窗和编辑弹窗逻辑
-let editingDocId = null;
-function openAddDocModal() {
-    const modal = document.getElementById('add_doc_modal');
-    if (!modal) return;
-    modal.style.display = 'block';
-    document.getElementById('add_doc_type').value = 'ID_CARD';
-    document.getElementById('add_doc_number').value = '';
-    editingDocId = null;
+// 证件类型选项
+const docTypeOptions = [
+    {value: 'id_card', text: '身份证'},
+    {value: 'passport', text: '护照'},
+    {value: 'return_home', text: '回乡证'},
+    {value: 'other', text: '其他'}
+];
+function fillDocTypeSelect(selected) {
+    // populate radio buttons
+    const group = document.getElementById('docTypeGroup');
+    const hiddenInput = document.getElementById('docType');
+    if (!group || !hiddenInput) return;
+    group.innerHTML = '';
+    docTypeOptions.forEach(opt => {
+        const id = 'dt_' + opt.value.replace(/[^a-zA-Z0-9]/g,'');
+        const div = document.createElement('div');
+        div.className = 'form-check form-check-inline';
+        const radio = document.createElement('input');
+        radio.className = 'form-check-input';
+        radio.type = 'radio';
+        radio.name = 'doc_type_radio';
+        radio.id = id;
+        radio.value = opt.value;
+        if (selected && selected.startsWith(opt.value)) radio.checked = true;
+        radio.addEventListener('change', function(){
+            hiddenInput.value = this.value;
+            // passport special case
+            const wrap = document.getElementById('passportCountryWrapper');
+            if (this.value === 'passport') {
+                wrap.classList.remove('d-none');
+            } else {
+                wrap.classList.add('d-none');
+            }
+        });
+        const label = document.createElement('label');
+        label.className = 'form-check-label';
+        label.htmlFor = id;
+        label.textContent = opt.text;
+        div.appendChild(radio);
+        div.appendChild(label);
+        group.appendChild(div);
+    });
+    // set hidden input initial value
+    hiddenInput.value = selected || '';
 }
-function closeAddDocModal() {
-    const modal = document.getElementById('add_doc_modal');
-    if (!modal) return;
-    modal.style.display = 'none';
-    editingDocId = null;
+function addDocBtnHandler(btn) {
+    console.log('addDocBtnHandler invoked', btn);
+    fillDocTypeSelect();
+    document.getElementById('docEditModalLabel').textContent = '添加证件';
+    document.getElementById('docEditForm').reset();
+    document.getElementById('passportCountryWrapper').classList.add('d-none');
+    // if this is the very first document, pre‑check 主证件;
+    // otherwise disable the checkbox entirely (主证件不可替换)
+    var primaryCheckbox = document.getElementById('isPrimaryDoc');
+    if (primaryCheckbox) {
+        if (document.querySelectorAll('.delete-doc-btn').length === 0) {
+            primaryCheckbox.checked = true;
+            primaryCheckbox.disabled = false;
+        } else {
+            primaryCheckbox.checked = false;
+            primaryCheckbox.disabled = true;
+            primaryCheckbox.title = '已存在主证件，无法设为主';
+        }
+    }
+    var actionInput = document.getElementById('docEditAction');
+    if (actionInput) actionInput.value = 'add_doc';
+    document.getElementById('docEditForm').setAttribute('data-doc-id', '');
+    const modal = new bootstrap.Modal(document.getElementById('docEditModal'));
+    modal.show();
 }
-function submitAddDocModal() {
-    const type = document.getElementById('add_doc_type').value;
-    const number = document.getElementById('add_doc_number').value.trim();
-    if (!number) { alert('请输入证件号码'); return; }
-    const form = document.createElement('form');
-    form.method = 'post';
-    form.style.display = 'none';
-    if (editingDocId) {
-        form.innerHTML = '<input name="action" value="update_doc">'
-            + '<input name="doc_id" value="'+editingDocId+'">';
+
+// put all binding code in a reusable initializer
+function initDocArea() {
+    // bind add button
+    var addBtnEl = document.getElementById('addDocBtn');
+    if (addBtnEl) {
+        addBtnEl.addEventListener('click', function(e) {
+            console.log('addDocBtn clicked');
+            addDocBtnHandler(this);
+        });
     } else {
-        form.innerHTML = '<input name="action" value="add_doc">';
+        console.warn('addDocBtn element not found when binding');
     }
-    form.innerHTML += '<input name="doc_type" value="'+type+'">'
-        + '<input name="doc_number" value="'+number+'">'
-        + '<input name="is_primary" value="on">';
-    document.body.appendChild(form);
-    form.submit();
-}
-function openEditDocModal(id, type, number) {
-    const modal = document.getElementById('add_doc_modal');
-    if (!modal) return;
-    editingDocId = id;
-    document.getElementById('add_doc_type').value = type;
-    document.getElementById('add_doc_number').value = number;
-    modal.style.display = 'block';
-}
 
-// 绑定所有弹窗相关按钮
-function bindModalEvents() {
-    // 添加证件按钮
-    const addBtn = document.getElementById('addDocBtn');
-    if (addBtn) addBtn.onclick = openAddDocModal;
-    // 证件弹窗确定/取消
-    const addDocModal = document.getElementById('add_doc_modal');
-    if (addDocModal) {
-        const btns = addDocModal.querySelectorAll('button');
-        btns.forEach(btn => {
-            if (btn.textContent.includes('取消')) btn.onclick = closeAddDocModal;
-            if (btn.textContent.includes('确定')) btn.onclick = submitAddDocModal;
-        });
-        // 点击遮罩关闭
-        addDocModal.addEventListener('click', function(e){
-            if(e.target === addDocModal){ closeAddDocModal(); }
+    // helpers (already defined above) remain available
+
+    // form submission handler
+    var editForm = document.getElementById('docEditForm');
+    if (editForm) {
+        editForm.addEventListener('submit', function(e){
+            e.preventDefault();
+            const docId = this.getAttribute('data-doc-id');
+            // before submitting, if passport type add country suffix
+            const formData = new FormData(this);
+            if (docId) formData.append('doc_id', docId);
+            let dt = formData.get('doc_type') || '';
+            if (dt === 'passport') {
+                let country = document.getElementById('passportCountry')?.value;
+                if (country === '__other') {
+                    country = document.getElementById('passportCountryOther')?.value.trim();
+                }
+                if (country) dt = 'PASSPORT-' + country;
+                formData.set('doc_type', dt);
+            }
+            var docInfoForm = document.getElementById('docInfoForm');
+            var action = docInfoForm ? docInfoForm.getAttribute('action') : '';
+            if (!action) { alert('未找到证件信息提交地址'); return; }
+            fetch(action, {method:'POST',body:formData,headers:{'X-Requested-With':'XMLHttpRequest'}})
+            .then(r=>r.text())
+            .then(html=>{
+                const modal = bootstrap.Modal.getInstance(document.getElementById('docEditModal'));
+                if(modal) modal.hide();
+                if (window.reloadDetailModal) {
+                    window.reloadDetailModal();
+                }
+            });
         });
     }
-    // ESC 关闭
-    document.addEventListener('keydown', function(e){
-        if(e.key === 'Escape') closeAddDocModal();
+
+    // delegated bindings for dynamic buttons
+    document.querySelectorAll('.edit-doc-btn').forEach(btn => {
+        btn.addEventListener('click', function(){
+            _openEdit(this.dataset.docId);
+        });
     });
-    // 编辑证件按钮
-    document.querySelectorAll('button[data-edit-doc]').forEach(btn => {
-        btn.onclick = function(){
-            const id = btn.getAttribute('data-id');
-            const type = btn.getAttribute('data-type');
-            const number = btn.getAttribute('data-number');
-            openEditDocModal(id, type, number);
-        };
+    document.querySelectorAll('.delete-doc-btn').forEach(btn => {
+        btn.addEventListener('click', function(){
+            _performDelete(this.dataset.docId);
+        });
+    });
+
+    // show/hide other-country input when dropdown changes
+    var countrySelect = document.getElementById('passportCountry');
+    if (countrySelect) {
+        countrySelect.addEventListener('change', function(){
+            var other = document.getElementById('passportCountryOther');
+            if (this.value === '__other') {
+                other.classList.remove('d-none');
+                other.focus();
+            } else if (other) {
+                other.classList.add('d-none');
+            }
+        });
+    }
+}
+
+// class operations
+function removeFromClass(classId) {
+    if (!classId) return;
+    var data = new FormData();
+    data.append('action','remove_class');
+    data.append('class_id', classId);
+    fetch('/students/detail/{{ student.student_number }}', {method:'POST', body:data, headers:{'X-Requested-With':'XMLHttpRequest'}})
+    .then(r=>r.text())
+    .then(html=>{
+        if (window.reloadDetailModal) window.reloadDetailModal();
     });
 }
 
-// 挂载全局，供模板调用
-window.openEditDocModal = openEditDocModal;
-window.submitAddDocModal = submitAddDocModal;
-window.closeAddDocModal = closeAddDocModal;
+function openTransferModal(classId) {
+    document.getElementById('fromClassId').value = classId;
+    // clear selection and disable source option
+    var select = document.getElementById('toClassSelect');
+    if (select) {
+        select.value = '';
+        Array.from(select.options).forEach(opt=>{
+            opt.disabled = (opt.value === classId);
+        });
+    }
+    const modal = new bootstrap.Modal(document.getElementById('transferModal'));
+    modal.show();
+}
 
-// 立即绑定
-bindModalEvents();
-})();
+function initClassArea() {
+    document.querySelectorAll('.remove-class-btn').forEach(btn=>{
+        btn.addEventListener('click', function(){
+            var cid = this.getAttribute('data-class-id');
+            if (confirm('确认将学员移出该班级？')) removeFromClass(cid);
+        });
+    });
+    document.querySelectorAll('.transfer-class-btn').forEach(btn=>{
+        btn.addEventListener('click', function(){
+            var cid = this.getAttribute('data-class-id');
+            openTransferModal(cid);
+        });
+    });
+    // transfer submit
+    var doBtn = document.getElementById('doTransferBtn');
+    if (doBtn) {
+        doBtn.addEventListener('click', function(){
+            var form = document.getElementById('transferForm');
+            var data = new FormData(form);
+            fetch('/students/detail/{{ student.student_number }}', {method:'POST', body:data, headers:{'X-Requested-With':'XMLHttpRequest'}})
+            .then(r=>r.text())
+            .then(html=>{
+                const modal = bootstrap.Modal.getInstance(document.getElementById('transferModal'));
+                if(modal) modal.hide();
+                if (window.reloadDetailModal) window.reloadDetailModal();
+            });
+        });
+    }
+}
+
+// run initially
+initDocArea();
+if (window.initClassArea) initClassArea();
 </script>
+                                </div> <!-- end col for doc card -->
+                </div> <!-- end row for docs -->
+            </div> <!-- end enrollmentAndDocsArea -->
+

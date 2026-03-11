@@ -12,7 +12,7 @@
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="adminDropdown">
                         <li><a class="dropdown-item {% if request.endpoint.startswith('students.') %}active{% endif %}" href="{{ url_for('students.index') }}">学生管理</a></li>
-                        <li><a class="dropdown-item {% if request.endpoint=='classes.list_classes' %}active{% endif %}" href="{{ url_for('classes.list_classes') }}">班级管理</a></li>
+                        <li><a class="dropdown-item {% if request.endpoint=='classes.list_classes' %}active{% endif %}" href="{{ url_for('classes.list_classes') }}" data-load-detail>班级管理</a></li>
                         <li><a class="dropdown-item {% if request.endpoint=='college_tools.college_tools' %}active{% endif %}" href="{{ url_for('college_tools.college_tools') }}">学院管理工具</a></li>
                     </ul>
                 </li>

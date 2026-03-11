@@ -7,6 +7,9 @@
 {% block content %}
 <h2>班级管理</h2>
 
+<p>由于界面已迁移到弹窗模式，请从学员页面点击“班级”按钮打开管理窗口。直接访问此页面也可以：</p>
+<p><button id="openClassModal" class="btn btn-primary btn-sm">打开班级管理弹窗</button></p>
+
 {% with messages = get_flashed_messages(with_categories=true) %}
 	{% if messages %}
 		<ul>
@@ -108,6 +111,11 @@
 		<p><label>自定义级别：<input type="text" name="custom_level" placeholder="例如：提升1阶"></label></p>
 	</div>
 
+	<p>
+		<label>授课老师：<input type="text" name="teacher" placeholder="可选"></label>
+		<label>上课时间：<input type="text" name="class_time" placeholder="例如 周三 18:00-20:00"></label>
+		<label>开班日期：<input type="date" name="start_date"></label>
+	</p>
 	<p><button type="submit">新增班级</button></p>
 </form>
 
@@ -146,6 +154,19 @@ competitionEventMode.addEventListener('change', updateCompetitionEventFields);
 updateTypeFields();
 updateCompetitionItemFields();
 updateCompetitionEventFields();
+
+// 如果用户直接打开此页面，按钮可以重新触发 modal
+var openBtn = document.getElementById('openClassModal');
+if (openBtn) {
+    openBtn.addEventListener('click', function() {
+        var a = document.createElement('a');
+        a.href = "{{ url_for('classes.list_classes') }}";
+        a.setAttribute('data-load-detail','');
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+    });
+}
 </script>
 
 {% if classes %}
@@ -153,9 +174,11 @@ updateCompetitionEventFields();
 	<thead>
 		<tr>
 			<th>ID</th>
-			<th>类型</th>
-			<th>级别-期数</th>
+			<th>班级</th>
 			<th>状态</th>
+			<th>老师</th>
+			<th>上课时间</th>
+			<th>开班日期</th>
 			<th>学员数</th>
 			<th>操作</th>
 		</tr>
@@ -164,14 +187,16 @@ updateCompetitionEventFields();
 		{% for c in classes %}
 		<tr>
 			<td>{{ c.id }}</td>
-			<td>{{ c.type }}</td>
-			<td>{{ c.level }}-{{ '%02d' % c.group_number }}</td>
+			<td>{{ c.type }} {{ c.level }} 第{{ c.group_number }}期</td>
 			<td>
 				{% if c.status == 'planned' %}预开班
 				{% elif c.status == 'active' %}正常班
 				{% elif c.status == 'completed' %}结课班
 				{% else %}{{ c.status }}{% endif %}
 			</td>
+			<td>{{ c.teacher or '—' }}</td>
+			<td>{{ c.class_time or '—' }}</td>
+			<td>{{ c.start_date or '—' }}</td>
 			<td>{{ c.student_count }}</td>
 			<td><a href="{{ url_for('classes.manage_class_students', class_id=c.id) }}" data-load-detail>班级学员管理</a></td>
 		</tr>
