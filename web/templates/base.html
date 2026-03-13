@@ -94,13 +94,14 @@
         if (!a) return;
         // remember URL for later reloads
         window.currentDetailUrl = a.href;
-        // if another modal is currently open, hide it so clicks don't land on its
-        // buttons (which could trigger delete confirmations).
-        const existing = document.querySelector('#studentDetailModal .modal');
-        if (existing && window.bootstrap) {
-            const inst = bootstrap.Modal.getInstance(existing);
-            if (inst) inst.hide();
+        // close any visible Bootstrap modal(s) to avoid interference
+        if (window.bootstrap) {
+            document.querySelectorAll('.modal.show').forEach(mod => {
+                const m = bootstrap.Modal.getInstance(mod);
+                if (m) m.hide();
+            });
         }
+        // also remove previous detail container if present
         let oldDiv = document.getElementById('studentDetailModal');
         if (oldDiv) oldDiv.remove();
 

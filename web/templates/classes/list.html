@@ -7,7 +7,8 @@
 {% block content %}
 <h2>班级管理</h2>
 
-<p>由于界面已迁移到弹窗模式，请从学员页面点击“班级”按钮打开管理窗口。直接访问此页面也可以：</p>
+<p>班级管理已升级为独立页面。请使用 <a href="{{ url_for('classes.list_classes') }}">新的班级管理页面</a> 查看和编辑班级。</p>
+<p>如果仍需打开旧版弹窗，可通过下面按钮：</p>
 <p><button id="openClassModal" class="btn btn-primary btn-sm">打开班级管理弹窗</button></p>
 
 {% with messages = get_flashed_messages(with_categories=true) %}
@@ -187,7 +188,14 @@ if (openBtn) {
 		{% for c in classes %}
 		<tr>
 			<td>{{ c.id }}</td>
-			<td>{{ c.type }} {{ c.level }} 第{{ c.group_number }}期</td>
+			<td>
+				{% set num = c|format_class_number %}
+				{% if num %}
+				<div>{{ num }}{% if c.type %} <span class="text-muted fs-6">{{ c.type }}</span>{% endif %}</div>
+				{% elif c.type %}
+				<div>{{ c.type }}</div>
+				{% endif %}
+			</td>
 			<td>
 				{% if c.status == 'planned' %}预开班
 				{% elif c.status == 'active' %}正常班

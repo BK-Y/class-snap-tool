@@ -5,7 +5,7 @@
     <li><a href="{{ url_for('students.index') }}" class="{% if request.endpoint=='students.index' %}active{% endif %}">学生管理</a></li>
     <!-- <li><a href="{{ url_for('students.add_student') }}" class="{% if request.endpoint=='students.add_student' %}active{% endif %}">➕ 新增学员</a></li> -->
     <!-- <li class="section">班级</li> -->
-    <li><a href="{{ url_for('classes.list_classes') }}" data-load-detail class="{% if request.endpoint=='classes.list_classes' %}active{% endif %}">🏫 班级管理</a></li>
+    <li><a href="{{ url_for('classes.list_classes') }}" class="{% if request.endpoint.startswith('classes.') and request.endpoint!='classes.manage_class_students' %}active{% endif %}">🏫 班级管理</a></li>
     <!-- <li class="section">常用</li> -->
     <li><a href="{{ url_for('index.index') }}" class="{% if request.endpoint=='index.index' %}active{% endif %}">返回首页</a></li>
 </ul>

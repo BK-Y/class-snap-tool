@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', function() {
 			<select name="class_id">
 				<option value="" {% if not filters.class_id %}selected{% endif %}>全部</option>
 				{% for c in classes %}
-				<option value="{{ c.id }}" {% if filters.class_id == c.id|string %}selected{% endif %}>{{ c.type }} {{ c.level }} 第{{ c.group_number }}期</option>
+				<option value="{{ c.id }}" {% if filters.class_id == c.id|string %}selected{% endif %}>{{ c.type }} {{ c|format_class_number }}</option>
 				{% endfor %}
 			</select>
 		</label>

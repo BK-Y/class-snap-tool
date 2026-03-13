@@ -123,7 +123,14 @@
                         <tbody>
                             {% for c in student_classes %}
                             <tr>
-                                <td>{{ c.type }} {{ c.level }} 第{{ c.group_number }}期</td>
+                                <td>
+                                    {% set num = c|format_class_number %}
+                                    {% if num %}
+                                        <div>{{ num }}{% if c.type %} <span class="text-muted fs-6">{{ c.type }}</span>{% endif %}</div>
+                                    {% elif c.type %}
+                                        <div>{{ c.type }}</div>
+                                    {% endif %}
+                                </td>
                                 <td>{{ c.status }}</td>
                                 <td>{{ c.teacher or '—' }}</td>
                                 <td>{{ c.class_time or '—' }}</td>
@@ -161,7 +168,7 @@
                                     <select id="toClassSelect" name="to_class_id" class="form-select">
                                         <option value="">(请选择)</option>
                                         {% for c in all_classes %}
-                                        <option value="{{c.id}}">{{c.type}} {{c.level}} 第{{c.group_number}}期{% if c.teacher %} · {{c.teacher}}{% endif %}{% if c.status %} ({{c.status}}){% endif %}</option>
+                                        <option value="{{c.id}}">{{c.type}} {{c|format_class_number}}{% if c.teacher %} · {{c.teacher}}{% endif %}{% if c.status %} ({{c.status}}){% endif %}</option>
                                         {% endfor %}
                                     </select>
                                 </div>

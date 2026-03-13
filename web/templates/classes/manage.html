@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}班级管理 - {{ super() }}{% endblock %}
+
+{% block content %}
+<h2>班级管理</h2>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ 'success' if category=='success' else 'danger' }}" role="alert">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+{% if errors %}
+    <div class="alert alert-danger" role="alert">
+        <ul class="mb-0">
+        {% for err in errors %}
+            <li>{{ err }}</li>
+        {% endfor %}
+        </ul>
+    </div>
+{% endif %}
+
+<p><button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addClassModal">➕ 新增班级</button></p>
+
+<!-- 新增班级弹窗，内容复用已有模板 -->
+<div class="modal fade" id="addClassModal" tabindex="-1" aria-labelledby="addClassModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addClassModalLabel">新增班级</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                {# reuse the shared form but point at this page's POST route #}
+                {% include 'classes/_class_form.html' %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{# flash messages and errors are already rendered by the included form if desired, but we replicate above #}
+
+{% include 'classes/_class_table.html' %}
+
+<p><a href="{{ url_for('index.index') }}">← 返回首页</a></p>
+
+<script>
+// same dynamic field script as modal_content; ensure fields update inside modal or page
+(function() {
+    const classTypeMode = document.getElementById('class_type_mode');
+    const regularFields = document.getElementById('regular_fields');
+    const competitionFields = document.getElementById('competition_fields');
+    const customFields = document.getElementById('custom_fields');
+
+    const competitionItemMode = document.getElementById('competition_item_mode');
+    const competitionItemCustomWrap = document.getElementById('competition_item_custom_wrap');
+    const competitionEventMode = document.getElementById('competition_event_mode');
+    const jbcEventWrap = document.getElementById('jbc_event_wrap');
+    const competitionEventCustomWrap = document.getElementById('competition_event_custom_wrap');
+
+    function updateTypeFields() {
+        const value = classTypeMode && classTypeMode.value;
+        if (regularFields) regularFields.style.display = value === 'regular' ? 'block' : 'none';
+        if (competitionFields) competitionFields.style.display = value === 'competition' ? 'block' : 'none';
+        if (customFields) customFields.style.display = value === 'custom' ? 'block' : 'none';
+    }
+    function updateCompetitionItemFields() {
+        if (competitionItemCustomWrap)
+            competitionItemCustomWrap.style.display = competitionItemMode && competitionItemMode.value === 'custom' ? 'inline-block' : 'none';
+    }
+    function updateCompetitionEventFields() {
+        if (jbcEventWrap)
+            jbcEventWrap.style.display = competitionEventMode && competitionEventMode.value === 'jbc_preset' ? 'block' : 'none';
+        if (competitionEventCustomWrap)
+            competitionEventCustomWrap.style.display = competitionEventMode && competitionEventMode.value === 'custom' ? 'block' : 'none';
+    }
+
+    if (classTypeMode) classTypeMode.addEventListener('change', updateTypeFields);
+    if (competitionItemMode) competitionItemMode.addEventListener('change', updateCompetitionItemFields);
+    if (competitionEventMode) competitionEventMode.addEventListener('change', updateCompetitionEventFields);
+
+    updateTypeFields();
+    updateCompetitionItemFields();
+    updateCompetitionEventFields();
+})();
+</script>
+
+{% endblock %}

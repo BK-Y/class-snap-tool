@@ -1,0 +1,46 @@
+{% if classes %}
+<div class="table-responsive">
+    <table class="table table-striped table-hover align-middle text-center">
+        <thead class="table-success">
+            <tr>
+                <th scope="col">ID</th>
+                <th scope="col">班级</th>
+                <th scope="col">状态</th>
+                <th scope="col">老师</th>
+                <th scope="col">上课时间</th>
+                <th scope="col">开班日期</th>
+                <th scope="col">学员数</th>
+                <th scope="col">操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in classes %}
+            <tr>
+                <td>{{ c.id }}</td>
+                <td>
+                    {% set num = c|format_class_number %}
+                    {% if num %}
+                        <div>{{ num }}{% if c.type %} <span class="text-muted fs-6">{{ c.type }}</span>{% endif %}</div>
+                    {% elif c.type %}
+                        <div>{{ c.type }}</div>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if c.status == 'planned' %}预开班
+                    {% elif c.status == 'active' %}正常班
+                    {% elif c.status == 'completed' %}结课班
+                    {% else %}{{ c.status }}{% endif %}
+                </td>
+                <td>{{ c.teacher or '—' }}</td>
+                <td>{{ c.class_time or '—' }}</td>
+                <td>{{ c.start_date or '—' }}</td>
+                <td>{{ c.student_count }}</td>
+                <td><a href="{{ url_for('classes.manage_class_students', class_id=c.id) }}" data-load-detail class="btn btn-sm btn-outline-primary">班级学员管理</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+    <div class="alert alert-info text-center my-4">📭 暂无班级数据</div>
+{% endif %}
