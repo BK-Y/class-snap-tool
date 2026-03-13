@@ -10,6 +10,7 @@ from dao.enrollment_sa_dao import (
     remove_student,
     list_classes_for_student,
 )
+from dao.student_sa_dao import search_students
 
 classes_bp = Blueprint('classes',__name__,url_prefix='/classes')
 
@@ -100,6 +101,13 @@ def _parse_class_form(form):
 
 @classes_bp.route('/', methods=['GET', 'POST'])
 def list_classes():
+    """Primary class management page.
+
+    Handles both the full-screen management UI (for normal browser requests)
+    and the legacy AJAX modal content (when ``X-Requested-With`` header is
+    present).  This consolidates the previous ``manage_page`` and
+    ``list_classes`` endpoints so that ``/classes`` is the top‑level URL.
+    """
     errors = []
 
     if request.method == 'POST':
@@ -107,7 +115,6 @@ def list_classes():
 
         if not errors:
             try:
-                # optional metadata
                 teacher = (request.form.get('teacher') or '').strip() or None
                 class_time = (request.form.get('class_time') or '').strip() or None
                 start_date = (request.form.get('start_date') or '').strip() or None
@@ -126,7 +133,6 @@ def list_classes():
                 errors.append('同类型/同级别/同期数班级已存在')
 
     raw = list_classes_with_counts()
-    # convert the query result (Class,count) into plain dicts for Jinja
     classes = []
     for cls, cnt in raw:
         classes.append({
@@ -140,11 +146,19 @@ def list_classes():
             'start_date': getattr(cls, 'start_date', None),
             'student_count': cnt,
         })
-    # if called via AJAX (e.g. from data-load-detail link) return modal partial
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return render_template('classes/_modal_content.html', classes=classes, errors=errors)
-    # otherwise keep original page as a simple redirect-or-info page
-    return render_template('classes/list.html', classes=classes, errors=errors)
+    # normal browser request: render the full management page
+    return render_template('classes/manage.html', classes=classes, errors=errors)
+
+
+
+# ``/classes/manage`` is retained only for legacy redirects; the
+# real management UI lives at ``/classes/`` now.  Keep the view around so
+# old links don't break, but simply forward to the new handler.
+@classes_bp.route('/manage', methods=['GET', 'POST'])
+def manage_page():
+    return redirect(url_for('classes.list_classes'))
 
 
 @classes_bp.route('/<int:class_id>/students', methods=['GET', 'POST'])
@@ -192,9 +206,9 @@ def manage_class_students(class_id):
 
         return redirect(url_for('classes.manage_class_students', class_id=class_id))
 
+    # keep the raw tuples returned by DAO (student, enrolled_at)
     enrolled_students = list_students_in_class(class_id)
-    # available_students 需补充 SQLAlchemy 版本实现
-    available_students = []
+    # forward enrollment logs to template; available_students removed (search modal handles it)
     enrollment_logs = list_enrollment_logs_by_class(class_id, limit=50)
 
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -202,7 +216,6 @@ def manage_class_students(class_id):
             'classes/_class_detail.html',
             class_item=class_item,
             enrolled_students=enrolled_students,
-            available_students=available_students,
             enrollment_logs=enrollment_logs,
         )
 
@@ -210,8 +223,72 @@ def manage_class_students(class_id):
         'classes/manage_students.html',
         class_item=class_item,
         enrolled_students=enrolled_students,
-        available_students=available_students,
         enrollment_logs=enrollment_logs,
     )
+
+
+@classes_bp.route('/<int:class_id>/search', methods=['GET'])
+def search_students_for_class(class_id):
+    """Return JSON of students not enrolled in the class.
+
+    Query params:
+    * q - optional search string (name or student number)
+    * page - page number (1-based)
+
+    Response: {results:[...], total:, page:, per_page:}
+    """
+    q = request.args.get('q', '').strip()
+    try:
+        page = max(int(request.args.get('page', '1')), 1)
+    except ValueError:
+        page = 1
+    per_page = 10
+
+    # compute enrolled IDs
+    enrolled = set()
+    for row in list_students_in_class(class_id):
+        student_obj = row[0] if isinstance(row, (tuple, list)) else row
+        if hasattr(student_obj, 'id'):
+            enrolled.add(student_obj.id)
+
+    # gather candidates
+    if q:
+        candidates = []
+        candidates.extend(search_students(display_name=q) or [])
+        candidates.extend(search_students(student_number=q) or [])
+        # dedupe while filtering
+        seen = set()
+        filtered = []
+        for s in candidates:
+            if s.id in seen:
+                continue
+            seen.add(s.id)
+            if s.id not in enrolled:
+                filtered.append(s)
+    else:
+        from db.models import Student
+        filtered = Student.query.filter(~Student.id.in_(enrolled)).all()
+
+    total = len(filtered)
+    start = (page - 1) * per_page
+    page_items = filtered[start:start+per_page]
+
+    def compute_name(s):
+        if getattr(s, 'display_name', None):
+            return s.display_name
+        # inspect documents if available
+        for doc in getattr(s, 'documents', []) or []:
+            if getattr(doc, 'doc_name', None):
+                return doc.doc_name
+        return getattr(s, 'student_number', '') or ''
+
+    data = [
+        {'id': s.id,
+         'name': compute_name(s),
+         'gender': s.gender}
+        for s in page_items
+    ]
+    from flask import jsonify
+    return jsonify({'results': data, 'total': total, 'page': page, 'per_page': per_page})
 
 # @bp.route('/',methods = ['POST'])

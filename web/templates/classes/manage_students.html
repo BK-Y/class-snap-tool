@@ -6,97 +6,58 @@
 
 {% block content %}
 <h2>班级学员管理</h2>
-<p>班级：{{ class_item.type }} / {{ class_item.level }} / 第{{ class_item.group_number }}期</p>
+<p>班级：{{ class_item|format_class_number }}{% if class_item.type %} / {{ class_item.type }}{% endif %}</p>
 
 {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
-        <ul>
-            {% for category, message in messages %}
-            <li>{{ message }}</li>
-            {% endfor %}
-        </ul>
+        {% for category, message in messages %}
+            <div class="alert alert-{{ 'success' if category=='success' else 'danger' }}" role="alert">
+                {{ message }}
+            </div>
+        {% endfor %}
     {% endif %}
 {% endwith %}
 
-<h3>已加入班级的学员</h3>
+<h3>学员信息 <button type="button" id="openSearchBtn" class="btn btn-sm btn-primary ms-2">添加学员</button></h3>
 {% if enrolled_students %}
-<table>
-    <thead>
+<div class="table-responsive">
+<table class="table table-striped table-hover align-middle text-center">
+    <thead class="table-success">
         <tr>
-            <th>学号</th>
-            <th>法定姓名</th>
-            <th>常用称呼</th>
+            <th>#</th>
+            <th>姓名</th>
             <th>性别</th>
             <th>报名时间</th>
-            <th>离班原因</th>
             <th>操作</th>
         </tr>
     </thead>
     <tbody>
-        {% for s in enrolled_students %}
+        {% for s, enrolled_at in enrolled_students %}
         <tr>
-            <td>{{ s.student_number }}</td>
-            <td>{{ s.display_name }}</td>
+            <td>{{ loop.index }}</td>
+            <td>{{ s|format_student_name }}</td>
             <td>{{ s.gender or '—' }}</td>
-            <td>{{ s.enrolled_at }}</td>
+            <td>{{ enrolled_at }}</td>
             <td>
-                <form method="POST" action="{{ url_for('classes.manage_class_students', class_id=class_item.id) }}">
-                    <input type="hidden" name="action" value="remove">
-                    <input type="hidden" name="student_id" value="{{ s.id }}">
-                    <input type="hidden" name="operator_id" value="web-admin">
-                    <input type="text" name="reason" placeholder="可选：离班原因">
-                    <button type="submit">移出班级</button>
-                </form>
+                <button class="btn btn-sm btn-outline-danger remove-btn" data-id="{{ s.id }}">移出</button>
             </td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
+</div>
 {% else %}
 <p>暂无学员加入该班级。</p>
 {% endif %}
 
-<h3>可加入学员</h3>
-{% if available_students %}
-<table>
-    <thead>
-        <tr>
-            <th>学号</th>
-            <th>法定姓名</th>
-            <th>常用称呼</th>
-            <th>性别</th>
-            <th>入班备注</th>
-            <th>操作</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for s in available_students %}
-        <tr>
-            <td>{{ s.student_number }}</td>
-            <td>{{ s.legal_name }}</td>
-            <td>{{ s.display_name }}</td>
-            <td>{{ s.gender or '—' }}</td>
-            <td>
-                <form method="POST" action="{{ url_for('classes.manage_class_students', class_id=class_item.id) }}">
-                    <input type="hidden" name="action" value="enroll">
-                    <input type="hidden" name="student_id" value="{{ s.id }}">
-                    <input type="hidden" name="operator_id" value="web-admin">
-                    <input type="text" name="reason" placeholder="可选：入班备注">
-                    <button type="submit">加入班级</button>
-                </form>
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-{% else %}
-<p>暂无可加入学员。</p>
-{% endif %}
+<!-- search modal trigger above; modal defined below -->
+<!-- the list of available students is replaced by modal search -->
 
 <h3>最近操作日志（50条）</h3>
 {% if enrollment_logs %}
-<table>
-    <thead>
+<div class="table-responsive">
+<table class="table table-striped table-hover align-middle text-center">
+    <thead class="table-success">
         <tr>
             <th>时间</th>
             <th>事件</th>
@@ -121,9 +82,172 @@
         {% endfor %}
     </tbody>
 </table>
+</div>
 {% else %}
 <p>暂无操作日志。</p>
 {% endif %}
 
-<p><a href="{{ url_for('classes.list_classes') }}">← 返回班级列表</a></p>
+
+<!-- student search modal -->
+<div class="modal fade" id="studentSearchModal" tabindex="-1" aria-labelledby="studentSearchModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="studentSearchModalLabel">搜索并添加学员</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body">
+                <form id="searchForm" class="mb-3">
+                    <div class="input-group">
+                        <input type="text" id="searchInput" name="q" class="form-control" placeholder="按姓名或学号搜索">
+                        <button class="btn btn-outline-secondary" type="submit">🔍</button>
+                    </div>
+                </form>
+                <div id="searchResults" class="table-responsive"></div>
+                <nav><ul class="pagination justify-content-center mt-2" id="searchPager"></ul></nav>
+            </div>
+        </div>
+    </div>
+</div>
+
+<p><a href="{{ url_for('classes.list_classes') }}">← 返回班级管理</a></p>
+
+<script>
+// search modal logic
+function performSearch(q,page=1) {
+    fetch(`{{ url_for('classes.search_students_for_class', class_id=class_item.id) }}?q=${encodeURIComponent(q)}&page=${page}`, {headers:{'X-Requested-With':'XMLHttpRequest'}})
+    .then(r=>r.json())
+    .then(data => {
+        var out = '';
+        if (!data.results || data.results.length === 0) {
+            out = '<div class="alert alert-secondary">未找到匹配的学员。</div>';
+        } else {
+            out = '<table class="table table-striped"><thead><tr><th>#</th><th>姓名</th><th>性别</th><th>操作</th></tr></thead><tbody>';
+            data.results.forEach((s,i)=>{
+                var name = s.name || '';
+                var index = (data.page-1)*data.per_page + i + 1;
+                out += `<tr><td>${index}</td><td>${name}</td><td>${s.gender||'—'}</td>`+
+                       `<td><button class="btn btn-sm btn-primary join-btn" data-id="${s.id}">加入</button></td></tr>`;
+            });
+            out += '</tbody></table>';
+        }
+        document.getElementById('searchResults').innerHTML = out;
+        // build pager (prev/next + page numbers)
+        var pager = document.getElementById('searchPager');
+        pager.innerHTML = '';
+        var total = data.total;
+        var per = data.per_page;
+        var cur = data.page;
+        var pages = Math.ceil(total / per);
+
+        function addPageItem(label, page, disabled, active) {
+            var li = document.createElement('li');
+            li.className = 'page-item' + (disabled ? ' disabled' : '') + (active ? ' active' : '');
+            var a = document.createElement('a');
+            a.className = 'page-link';
+            a.href = '#';
+            a.textContent = label;
+            if (!disabled) {
+                a.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    performSearch(q, page);
+                });
+            }
+            li.appendChild(a);
+            pager.appendChild(li);
+        }
+
+        if (pages > 1) {
+            addPageItem('«', Math.max(1, cur - 1), cur === 1, false);
+            var start = Math.max(1, cur - 2);
+            var end = Math.min(pages, cur + 2);
+            if (start > 1) {
+                addPageItem('1', 1, false, false);
+                if (start > 2) {
+                    var ell = document.createElement('li');
+                    ell.className = 'page-item disabled';
+                    ell.innerHTML = '<span class="page-link">…</span>';
+                    pager.appendChild(ell);
+                }
+            }
+            for (var p = start; p <= end; p++) {
+                addPageItem(p, p, false, p === cur);
+            }
+            if (end < pages) {
+                if (end < pages - 1) {
+                    var ell = document.createElement('li');
+                    ell.className = 'page-item disabled';
+                    ell.innerHTML = '<span class="page-link">…</span>';
+                    pager.appendChild(ell);
+                }
+                addPageItem(pages, pages, false, false);
+            }
+            addPageItem('»', Math.min(pages, cur + 1), cur === pages, false);
+        }
+        document.querySelectorAll('.join-btn').forEach(btn=>{
+            btn.addEventListener('click', function(){
+                var sid = this.dataset.id;
+                var fd = new FormData();
+                fd.append('action','enroll');
+                fd.append('student_id', sid);
+                fd.append('operator_id','web-admin');
+                fetch('{{ url_for("classes.manage_class_students", class_id=class_item.id) }}', {method:'POST', body:fd, headers:{'X-Requested-With':'XMLHttpRequest'}})
+                    .then(r=>r.text()).then(html=>{ location.reload(); });
+            });
+        });
+        // removal buttons
+        document.querySelectorAll('.remove-btn').forEach(btn=>{
+            btn.addEventListener('click', function(){
+                var sid = this.dataset.id;
+                var reason = prompt('请输入离班原因（可留空）');
+                var fd = new FormData();
+                fd.append('action','remove');
+                fd.append('student_id', sid);
+                fd.append('reason', reason || '');
+                fd.append('operator_id','web-admin');
+                fetch('{{ url_for("classes.manage_class_students", class_id=class_item.id) }}', {method:'POST', body:fd, headers:{'X-Requested-With':'XMLHttpRequest'}})
+                    .then(r=>r.text()).then(html=>{ location.reload(); });
+            });
+        });
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+    var form = document.getElementById('searchForm');
+    if (form) {
+        form.addEventListener('submit', function(e){
+            e.preventDefault();
+            var q = document.getElementById('searchInput').value || '';
+            performSearch(q, 1);
+        });
+    }
+
+    var openBtn = document.getElementById('openSearchBtn');
+    if (openBtn) {
+        openBtn.addEventListener('click', function(){
+            var modalEl = document.getElementById('studentSearchModal');
+            if (modalEl) {
+                var modal = new bootstrap.Modal(modalEl, {backdrop:'static', keyboard:false});
+                modal.show();
+                // perform initial empty search to list all candidates
+                performSearch('', 1);
+            }
+        });
+    }
+    // removal listeners for the static enrolled-students table
+    document.querySelectorAll('.remove-btn').forEach(btn=>{
+        btn.addEventListener('click', function(){
+            var sid = this.dataset.id;
+            var reason = prompt('请输入离班原因（可留空）');
+            var fd = new FormData();
+            fd.append('action','remove');
+            fd.append('student_id', sid);
+            fd.append('reason', reason || '');
+            fd.append('operator_id','web-admin');
+            fetch('{{ url_for("classes.manage_class_students", class_id=class_item.id) }}', {method:'POST', body:fd, headers:{'X-Requested-With':'XMLHttpRequest'}})
+                .then(r=>r.text()).then(html=>{ location.reload(); });
+        });
+    });
+});
+</script>
 {% endblock %}
