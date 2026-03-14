@@ -1,0 +1,1181 @@
+{% extends "base.html" %}
+
+{% block title %}课次管理 - {{ class_item|format_class_number }} - {{ super() }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.weekday-btn-group {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+.weekday-btn {
+    min-width: 2.5rem;
+    padding: 0.5rem 0.75rem;
+    font-weight: 500;
+}
+.weekday-btn-group .btn-check:checked + .weekday-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-color: #667eea;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+}
+.weekday-btn-group .btn-check:focus + .weekday-btn {
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-3">
+        <div class="col">
+            <h2>课次管理</h2>
+            <p class="text-muted">
+                班级：{{ class_item|format_class_number }}
+                {% if class_item.type %} / {{ class_item.type }}{% endif %}
+                {% if class_item.teacher %} / 老师：{{ class_item.teacher }}{% endif %}
+            </p>
+        </div>
+        <div class="col-auto">
+            <a href="{{ url_for('classes.list_classes') }}" class="btn btn-outline-secondary">← 返回</a>
+            <a href="{{ url_for('classes.manage_class_students', class_id=class_item.id) }}" class="btn btn-outline-primary">学员管理</a>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-2">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">总课次</h5>
+                    <p class="display-4">{{ stats.total }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card text-center bg-success text-white">
+                <div class="card-body">
+                    <h5 class="card-title">已完成</h5>
+                    <p class="display-4">{{ stats.held }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card text-center bg-primary text-white">
+                <div class="card-body">
+                    <h5 class="card-title">待上课</h5>
+                    <p class="display-4">{{ stats.scheduled }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card text-center bg-danger text-white">
+                <div class="card-body">
+                    <h5 class="card-title">已取消</h5>
+                    <p class="display-4">{{ stats.canceled }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card text-center bg-warning text-dark">
+                <div class="card-body">
+                    <h5 class="card-title">已改期</h5>
+                    <p class="display-4">{{ stats.rescheduled }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-3" id="sessionTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="sessions-tab" data-bs-toggle="tab" data-bs-target="#sessions" type="button">课次列表</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="patterns-tab" data-bs-toggle="tab" data-bs-target="#patterns" type="button">排课规则</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="stats-tab" data-bs-toggle="tab" data-bs-target="#stats" type="button">统计</button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="sessionTabsContent">
+        <!-- Sessions Tab -->
+        <div class="tab-pane fade show active" id="sessions" role="tabpanel">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>课次列表</span>
+                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createSessionModal">
+                        + 添加课次
+                    </button>
+                </div>
+                <div class="card-body">
+                    {% if sessions %}
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>日期</th>
+                                    <th>时间</th>
+                                    <th>节次</th>
+                                    <th>主题</th>
+                                    <th>老师</th>
+                                    <th>状态</th>
+                                    <th>打分</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for session in sessions %}
+                                <tr>
+                                    <td>{{ session.session_date.strftime('%Y-%m-%d') }}</td>
+                                    <td>
+                                        {% if session.start_time and session.end_time %}
+                                            {{ session.start_time }} - {{ session.end_time }}
+                                        {% else %}
+                                            <span class="text-muted">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ session.session_index or '—' }}</td>
+                                    <td>{{ session.topic or '—' }}</td>
+                                    <td>{{ session.teacher or class_item.teacher or '—' }}</td>
+                                    <td>
+                                        {% if session.status == 'held' %}
+                                            <span class="badge bg-success">已完成</span>
+                                        {% elif session.status == 'scheduled' %}
+                                            <span class="badge bg-primary">待上课</span>
+                                        {% elif session.status == 'canceled' %}
+                                            <span class="badge bg-danger">已取消</span>
+                                            {% if session.cancel_reason %}
+                                                <small class="text-muted d-block">{{ session.cancel_reason }}</small>
+                                            {% endif %}
+                                        {% elif session.status == 'rescheduled' %}
+                                            <span class="badge bg-warning text-dark">已改期</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-primary score-btn" 
+                                                data-session-id="{{ session.id }}"
+                                                data-session-date="{{ session.session_date }}"
+                                                {% if session.status != 'held' %}disabled{% endif %}>
+                                            录入分数
+                                        </button>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            {% if session.status == 'scheduled' %}
+                                            <button class="btn btn-success mark-held-btn" data-session-id="{{ session.id }}">完成</button>
+                                            <button class="btn btn-danger cancel-btn" data-session-id="{{ session.id }}">取消</button>
+                                            {% endif %}
+                                            <button class="btn btn-outline-danger delete-btn" data-session-id="{{ session.id }}">删除</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center mb-0">暂无课次，点击上方按钮添加。</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Patterns Tab -->
+        <div class="tab-pane fade" id="patterns" role="tabpanel">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>排课规则</span>
+                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addPatternModal">
+                        + 添加规则
+                    </button>
+                </div>
+                <div class="card-body">
+                    {% if patterns %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>星期</th>
+                                    <th>时间</th>
+                                    <th>周期</th>
+                                    <th>有效期</th>
+                                    <th>备注</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for p in patterns %}
+                                <tr>
+                                    <td>
+                                        {% set weekdays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'] %}
+                                        {{ weekdays[p.weekday] }}
+                                    </td>
+                                    <td>{{ p.start_time }} - {{ p.end_time }}</td>
+                                    <td>每{{ p.repeat_interval }}周</td>
+                                    <td>
+                                        {% if p.valid_from and p.valid_to %}
+                                            {{ p.valid_from.strftime('%Y-%m-%d') }} ~ {{ p.valid_to.strftime('%Y-%m-%d') }}
+                                        {% elif p.valid_from %}
+                                            {{ p.valid_from.strftime('%Y-%m-%d') }} 起
+                                        {% elif p.valid_to %}
+                                            至 {{ p.valid_to.strftime('%Y-%m-%d') }}
+                                        {% else %}
+                                            长期有效
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ p.note or '—' }}</td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-sm btn-outline-primary edit-pattern-btn" data-pattern-id="{{ p.id }}">编辑</button>
+                                            <button class="btn btn-sm btn-outline-info history-pattern-btn" data-pattern-id="{{ p.id }}">历史</button>
+                                            <button class="btn btn-sm btn-outline-danger delete-pattern-btn" data-pattern-id="{{ p.id }}">删除</button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-center mb-0">暂无排课规则。</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Tab -->
+        <div class="tab-pane fade" id="stats" role="tabpanel">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">分数统计</div>
+                        <div class="card-body">
+                            {% if score_summary %}
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>类型</th>
+                                        <th>平均分</th>
+                                        <th>最低分</th>
+                                        <th>最高分</th>
+                                        <th>次数</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for score_type, data in score_summary.items() %}
+                                    <tr>
+                                        <td>
+                                            {% if score_type == 'Q' %}出勤
+                                            {% elif score_type == 'T' %}小老师
+                                            {% elif score_type == 'C' %}创新
+                                            {% elif score_type == 'M1' %}任务 1
+                                            {% elif score_type == 'M2' %}任务 2
+                                            {% elif score_type == 'N' %}常规
+                                            {% else %}{{ score_type }}{% endif %}
+                                        </td>
+                                        <td>{{ "%.1f"|format(data.avg) }}</td>
+                                        <td>{{ data.min }}</td>
+                                        <td>{{ data.max }}</td>
+                                        <td>{{ data.count }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            {% else %}
+                            <p class="text-muted mb-0">暂无打分数据。</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Session Modal -->
+<div class="modal fade" id="createSessionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">添加课次</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createSessionForm">
+                    <input type="hidden" name="class_id" value="{{ class_item.id }}">
+                    <div class="mb-3">
+                        <label class="form-label">上课日期 *</label>
+                        <input type="date" name="session_date" class="form-control" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">开始时间</label>
+                            <input type="time" name="start_time" class="form-control">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">结束时间</label>
+                            <input type="time" name="end_time" class="form-control">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">第几次课</label>
+                        <input type="number" name="session_index" class="form-control" min="1">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">课程主题</label>
+                        <input type="text" name="topic" class="form-control" placeholder="例如：巡线机器人">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">上课老师</label>
+                        <input type="text" name="teacher" class="form-control" value="{{ class_item.teacher or '' }}" placeholder="留空使用班级默认老师">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">关联排课规则</label>
+                        <select name="schedule_pattern_id" class="form-select">
+                            <option value="">-- 不关联 --</option>
+                            {% for p in patterns %}
+                            <option value="{{ p.id }}">{{ ['周一','周二','周三','周四','周五','周六','周日'][p.weekday] }} {{ p.start_time }}-{{ p.end_time }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" name="is_extra" class="form-check-input" id="isExtra">
+                        <label class="form-check-label" for="isExtra">补课/临时加课</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="confirmCreateSession">创建</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Pattern Modal -->
+<div class="modal fade" id="addPatternModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">添加排课规则</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addPatternForm">
+                    <div class="mb-3">
+                        <label class="form-label d-block">星期几 *</label>
+                        <div class="weekday-btn-group">
+                            <input type="radio" class="btn-check" name="weekday" id="addWeekday0" value="0" autocomplete="off">
+                            <label class="btn btn-outline-primary weekday-btn" for="addWeekday0">一</label>
+                            
+                            <input type="radio" class="btn-check" name="weekday" id="addWeekday1" value="1" autocomplete="off">
+                            <label class="btn btn-outline-primary weekday-btn" for="addWeekday1">二</label>
+                            
+                            <input type="radio" class="btn-check" name="weekday" id="addWeekday2" value="2" autocomplete="off">
+                            <label class="btn btn-outline-primary weekday-btn" for="addWeekday2">三</label>
+                            
+                            <input type="radio" class="btn-check" name="weekday" id="addWeekday3" value="3" autocomplete="off">
+                            <label class="btn btn-outline-primary weekday-btn" for="addWeekday3">四</label>
+                            
+                            <input type="radio" class="btn-check" name="weekday" id="addWeekday4" value="4" autocomplete="off">
+                            <label class="btn btn-outline-primary weekday-btn" for="addWeekday4">五</label>
+                            
+                            <input type="radio" class="btn-check" name="weekday" id="addWeekday5" value="5" autocomplete="off">
+                            <label class="btn btn-outline-primary weekday-btn" for="addWeekday5">六</label>
+                            
+                            <input type="radio" class="btn-check" name="weekday" id="addWeekday6" value="6" autocomplete="off">
+                            <label class="btn btn-outline-primary weekday-btn" for="addWeekday6">日</label>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">开始时间 *</label>
+                            <div class="row g-2">
+                                <div class="col-7">
+                                    <select name="start_time_hour" class="form-select" required>
+                                        <option value="">时</option>
+                                        {% for h in range(8, 23) %}
+                                        <option value="{{ '%02d'|format(h) }}">{{ h }}点</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-5">
+                                    <select name="start_time_minute" class="form-select" required>
+                                        <option value="">分</option>
+                                        {% for m in range(0, 60, 10) %}
+                                        <option value="{{ '%02d'|format(m) }}">{{ '%02d'|format(m) }}分</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <input type="hidden" name="start_time" id="addStartTime">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">结束时间 *</label>
+                            <div class="row g-2">
+                                <div class="col-7">
+                                    <select name="end_time_hour" class="form-select" required>
+                                        <option value="">时</option>
+                                        {% for h in range(8, 23) %}
+                                        <option value="{{ '%02d'|format(h) }}">{{ h }}点</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-5">
+                                    <select name="end_time_minute" class="form-select" required>
+                                        <option value="">分</option>
+                                        {% for m in range(0, 60, 10) %}
+                                        <option value="{{ '%02d'|format(m) }}">{{ '%02d'|format(m) }}分</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <input type="hidden" name="end_time" id="addEndTime">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">每几周一次</label>
+                        <input type="number" name="repeat_interval" class="form-control" value="1" min="1">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">生效日期</label>
+                            <input type="date" name="valid_from" class="form-control">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">失效日期</label>
+                            <input type="date" name="valid_to" class="form-control">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">备注</label>
+                        <input type="text" name="note" class="form-control" placeholder="例如：寒假停课">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="confirmAddPattern">添加</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Score Modal -->
+<div class="modal fade" id="scoreModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">查看分数 - <span id="scoreModalDate"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- View Mode -->
+                <div id="scoreViewMode" class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>学员</th>
+                                <th>出勤 (Q)</th>
+                                <th>小老师 (T)</th>
+                                <th>创新 (C)</th>
+                                <th>任务 1 (M1)</th>
+                                <th>任务 2 (M2)</th>
+                                <th>常规 (N)</th>
+                                <th>备注</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scoreViewBody">
+                            {% for student in students %}
+                            <tr data-student-id="{{ student.id }}">
+                                <td>{{ student.name }}</td>
+                                <td class="score-view-cell" data-type="Q"><span class="text-muted">—</span></td>
+                                <td class="score-view-cell" data-type="T"><span class="text-muted">—</span></td>
+                                <td class="score-view-cell" data-type="C"><span class="text-muted">—</span></td>
+                                <td class="score-view-cell" data-type="M1"><span class="text-muted">—</span></td>
+                                <td class="score-view-cell" data-type="M2"><span class="text-muted">—</span></td>
+                                <td class="score-view-cell" data-type="N"><span class="text-muted">—</span></td>
+                                <td class="score-comment-cell"><span class="text-muted">—</span></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Edit Mode (hidden by default) -->
+                <div id="scoreEditMode" class="table-responsive" style="display: none;">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>学员</th>
+                                <th>出勤 (Q)</th>
+                                <th>小老师 (T)</th>
+                                <th>创新 (C)</th>
+                                <th>任务 1 (M1)</th>
+                                <th>任务 2 (M2)</th>
+                                <th>常规 (N)</th>
+                                <th>备注</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scoreEditBody">
+                            {% for student in students %}
+                            <tr data-student-id="{{ student.id }}">
+                                <td>{{ student.name }}</td>
+                                <td>
+                                    <select class="form-select form-select-sm score-select" data-type="Q" style="width:80px">
+                                        <option value="">-</option>
+                                        <option value="5">5 全勤</option>
+                                        <option value="3">3 补课</option>
+                                        <option value="0">0 缺勤</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <select class="form-select form-select-sm score-select" data-type="T" style="width:80px">
+                                        <option value="">-</option>
+                                        <option value="1">+1</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <select class="form-select form-select-sm score-select" data-type="C" style="width:80px">
+                                        <option value="">-</option>
+                                        <option value="1">+1</option>
+                                        <option value="2">+2</option>
+                                        <option value="3">+3</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <select class="form-select form-select-sm score-select" data-type="M1" style="width:80px">
+                                        <option value="">-</option>
+                                        <option value="1">1</option>
+                                        <option value="2">2</option>
+                                        <option value="3">3</option>
+                                        <option value="4">4</option>
+                                        <option value="5">5</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <select class="form-select form-select-sm score-select" data-type="M2" style="width:80px">
+                                        <option value="">-</option>
+                                        <option value="1">1</option>
+                                        <option value="2">2</option>
+                                        <option value="3">3</option>
+                                        <option value="4">4</option>
+                                        <option value="5">5</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <select class="form-select form-select-sm score-select" data-type="N" style="width:80px">
+                                        <option value="">-</option>
+                                        <option value="1">1</option>
+                                        <option value="2">2</option>
+                                        <option value="3">3</option>
+                                        <option value="4">4</option>
+                                        <option value="5">5</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <input type="text" class="form-control form-control-sm comment-input" style="width:150px" placeholder="备注">
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                <button type="button" class="btn btn-primary" id="toggleEditScore">✏️ 编辑</button>
+                <button type="button" class="btn btn-success" id="confirmSaveScores" style="display: none;">💾 保存</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Session Modal -->
+<div class="modal fade" id="cancelModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">取消课次</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="cancelForm">
+                    <div class="mb-3">
+                        <label class="form-label">取消原因</label>
+                        <textarea name="cancel_reason" class="form-control" rows="3" placeholder="例如：教师请假"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmCancel">确认取消</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Pattern Modal -->
+<div class="modal fade" id="editPatternModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">编辑排课规则</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editPatternForm">
+                    <input type="hidden" id="editPatternId">
+                    <div class="mb-3">
+                        <label class="form-label d-block">星期几 *</label>
+                        <div class="weekday-btn-group">
+                            <input type="radio" class="btn-check" name="editWeekday" id="editWeekday0" value="0" autocomplete="off">
+                            <label class="btn btn-outline-primary weekday-btn" for="editWeekday0">一</label>
+                            
+                            <input type="radio" class="btn-check" name="editWeekday" id="editWeekday1" value="1" autocomplete="off">
+                            <label class="btn btn-outline-primary weekday-btn" for="editWeekday1">二</label>
+                            
+                            <input type="radio" class="btn-check" name="editWeekday" id="editWeekday2" value="2" autocomplete="off">
+                            <label class="btn btn-outline-primary weekday-btn" for="editWeekday2">三</label>
+                            
+                            <input type="radio" class="btn-check" name="editWeekday" id="editWeekday3" value="3" autocomplete="off">
+                            <label class="btn btn-outline-primary weekday-btn" for="editWeekday3">四</label>
+                            
+                            <input type="radio" class="btn-check" name="editWeekday" id="editWeekday4" value="4" autocomplete="off">
+                            <label class="btn btn-outline-primary weekday-btn" for="editWeekday4">五</label>
+                            
+                            <input type="radio" class="btn-check" name="editWeekday" id="editWeekday5" value="5" autocomplete="off">
+                            <label class="btn btn-outline-primary weekday-btn" for="editWeekday5">六</label>
+                            
+                            <input type="radio" class="btn-check" name="editWeekday" id="editWeekday6" value="6" autocomplete="off">
+                            <label class="btn btn-outline-primary weekday-btn" for="editWeekday6">日</label>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">开始时间 *</label>
+                            <div class="row g-2">
+                                <div class="col-7">
+                                    <select id="editStartTimeHour" class="form-select" required>
+                                        <option value="">时</option>
+                                        {% for h in range(8, 23) %}
+                                        <option value="{{ '%02d'|format(h) }}">{{ h }}点</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-5">
+                                    <select id="editStartTimeMinute" class="form-select" required>
+                                        <option value="">分</option>
+                                        {% for m in range(0, 60, 10) %}
+                                        <option value="{{ '%02d'|format(m) }}">{{ '%02d'|format(m) }}分</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <input type="hidden" id="editStartTime">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">结束时间 *</label>
+                            <div class="row g-2">
+                                <div class="col-7">
+                                    <select id="editEndTimeHour" class="form-select" required>
+                                        <option value="">时</option>
+                                        {% for h in range(8, 23) %}
+                                        <option value="{{ '%02d'|format(h) }}">{{ h }}点</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-5">
+                                    <select id="editEndTimeMinute" class="form-select" required>
+                                        <option value="">分</option>
+                                        {% for m in range(0, 60, 10) %}
+                                        <option value="{{ '%02d'|format(m) }}">{{ '%02d'|format(m) }}分</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <input type="hidden" id="editEndTime">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">每几周一次</label>
+                        <input type="number" id="editRepeatInterval" class="form-control" value="1" min="1">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">生效日期</label>
+                            <input type="date" id="editValidFrom" class="form-control">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">失效日期</label>
+                            <input type="date" id="editValidTo" class="form-control">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">备注</label>
+                        <input type="text" id="editNote" class="form-control" placeholder="例如：寒假停课">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">变更原因 <span class="text-danger">*</span></label>
+                        <textarea id="editChangeReason" class="form-control" rows="2" placeholder="请说明修改原因，例如：因老师时间调整" required></textarea>
+                        <small class="text-muted">修改排课规则会记录历史，已发生的课次不受影响。</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="confirmEditPattern">保存修改</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pattern History Modal -->
+<div class="modal fade" id="patternHistoryModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">修改历史记录</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="patternHistoryContent" class="table-responsive">
+                    <p class="text-muted">加载中...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentSessionId = null;
+let currentSessionDate = null;
+const classId = {{ class_item.id }};
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Create session
+    document.getElementById('confirmCreateSession').addEventListener('click', function() {
+        const form = document.getElementById('createSessionForm');
+        const formData = new FormData(form);
+        
+        fetch(`/classes/${classId}/sessions/create`, {
+            method: 'POST',
+            body: formData,
+            headers: {'X-Requested-With': 'XMLHttpRequest'}
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('创建失败：' + data.error);
+            }
+        });
+    });
+
+    // Add pattern
+    document.getElementById('confirmAddPattern').addEventListener('click', function() {
+        const form = document.getElementById('addPatternForm');
+        const formData = new FormData(form);
+        
+        // Combine hour and minute for start time
+        const startHour = form.querySelector('[name="start_time_hour"]').value;
+        const startMinute = form.querySelector('[name="start_time_minute"]').value;
+        const endHour = form.querySelector('[name="end_time_hour"]').value;
+        const endMinute = form.querySelector('[name="end_time_minute"]').value;
+        
+        if (!startHour || !startMinute) {
+            alert('请选择开始时间');
+            return;
+        }
+        if (!endHour || !endMinute) {
+            alert('请选择结束时间');
+            return;
+        }
+        
+        formData.set('start_time', `${startHour}:${startMinute}`);
+        formData.set('end_time', `${endHour}:${endMinute}`);
+
+        fetch(`/classes/${classId}/sessions/patterns`, {
+            method: 'POST',
+            body: formData,
+            headers: {'X-Requested-With': 'XMLHttpRequest'}
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('添加失败：' + data.error);
+            }
+        });
+    });
+
+    // Delete pattern
+    document.querySelectorAll('.delete-pattern-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (!confirm('确定删除该排课规则？')) return;
+            const patternId = this.dataset.patternId;
+            fetch(`/classes/${classId}/sessions/patterns/${patternId}`, {
+                method: 'DELETE',
+                headers: {'X-Requested-With': 'XMLHttpRequest'}
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('删除失败：' + data.error);
+                }
+            });
+        });
+    });
+
+    // Edit pattern
+    let currentEditPatternId = null;
+    document.querySelectorAll('.edit-pattern-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            currentEditPatternId = this.dataset.patternId;
+
+            // Load pattern data
+            fetch(`/classes/${classId}/sessions/patterns/${currentEditPatternId}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    const p = data.pattern;
+                    document.getElementById('editPatternId').value = p.id;
+                    // Set weekday radio button
+                    const weekdayRadio = document.querySelector(`input[name="editWeekday"][value="${p.weekday}"]`);
+                    if (weekdayRadio) weekdayRadio.checked = true;
+                    
+                    // Parse and set start time
+                    if (p.start_time) {
+                        const [sh, sm] = p.start_time.split(':');
+                        document.getElementById('editStartTimeHour').value = sh;
+                        document.getElementById('editStartTimeMinute').value = sm;
+                    }
+                    // Parse and set end time
+                    if (p.end_time) {
+                        const [eh, em] = p.end_time.split(':');
+                        document.getElementById('editEndTimeHour').value = eh;
+                        document.getElementById('editEndTimeMinute').value = em;
+                    }
+                    
+                    document.getElementById('editRepeatInterval').value = p.repeat_interval || 1;
+                    document.getElementById('editValidFrom').value = p.valid_from || '';
+                    document.getElementById('editValidTo').value = p.valid_to || '';
+                    document.getElementById('editNote').value = p.note || '';
+                    document.getElementById('editChangeReason').value = '';
+
+                    const modal = new bootstrap.Modal(document.getElementById('editPatternModal'));
+                    modal.show();
+                } else {
+                    alert('加载规则失败：' + data.error);
+                }
+            });
+        });
+    });
+
+    document.getElementById('confirmEditPattern').addEventListener('click', function() {
+        const formData = new FormData();
+        // Get selected weekday from radio group
+        const selectedWeekday = document.querySelector('input[name="editWeekday"]:checked');
+        if (!selectedWeekday) {
+            alert('请选择星期几');
+            return;
+        }
+        formData.append('weekday', selectedWeekday.value);
+        
+        // Combine hour and minute for start time
+        const startHour = document.getElementById('editStartTimeHour').value;
+        const startMinute = document.getElementById('editStartTimeMinute').value;
+        const endHour = document.getElementById('editEndTimeHour').value;
+        const endMinute = document.getElementById('editEndTimeMinute').value;
+        
+        if (!startHour || !startMinute) {
+            alert('请选择开始时间');
+            return;
+        }
+        if (!endHour || !endMinute) {
+            alert('请选择结束时间');
+            return;
+        }
+        
+        formData.append('start_time', `${startHour}:${startMinute}`);
+        formData.append('end_time', `${endHour}:${endMinute}`);
+        formData.append('repeat_interval', document.getElementById('editRepeatInterval').value);
+        formData.append('valid_from', document.getElementById('editValidFrom').value);
+        formData.append('valid_to', document.getElementById('editValidTo').value);
+        formData.append('note', document.getElementById('editNote').value);
+        formData.append('change_reason', document.getElementById('editChangeReason').value);
+
+        fetch(`/classes/${classId}/sessions/patterns/${currentEditPatternId}/edit`, {
+            method: 'POST',
+            body: formData,
+            headers: {'X-Requested-With': 'XMLHttpRequest'}
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('保存失败：' + data.error);
+            }
+        });
+    });
+
+    // View pattern history
+    document.querySelectorAll('.history-pattern-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const patternId = this.dataset.patternId;
+            fetch(`/classes/${classId}/sessions/patterns/${patternId}/history`)
+            .then(r => r.json())
+            .then(data => {
+                const container = document.getElementById('patternHistoryContent');
+                if (!data.history || data.history.length === 0) {
+                    container.innerHTML = '<p class="text-muted text-center">暂无修改记录。</p>';
+                } else {
+                    let html = '<table class="table table-sm table-hover"><thead><tr><th>修改时间</th><th>修改人</th><th>原因</th><th>变更前</th><th>变更后</th><th>影响课次</th></tr></thead><tbody>';
+                    data.history.forEach(h => {
+                        const oldStr = []
+                            .concat(h.old.weekday !== null ? `星期${['一','二','三','四','五','六','日'][h.old.weekday]}` : '')
+                            .concat(h.old.start_time && h.old.end_time ? `${h.old.start_time}-${h.old.end_time}` : '')
+                            .concat(h.old.repeat_interval > 1 ? `每${h.old.repeat_interval}周` : '')
+                            .join(' / ');
+                        const newStr = []
+                            .concat(h.new.weekday !== null ? `星期${['一','二','三','四','五','六','日'][h.new.weekday]}` : '')
+                            .concat(h.new.start_time && h.new.end_time ? `${h.new.start_time}-${h.new.end_time}` : '')
+                            .concat(h.new.repeat_interval > 1 ? `每${h.new.repeat_interval}周` : '')
+                            .join(' / ');
+                        html += `<tr>
+                            <td>${h.changed_at ? h.changed_at.replace('T', ' ').substring(0, 16) : ''}</td>
+                            <td>${h.changed_by || '—'}</td>
+                            <td>${h.change_reason || '—'}</td>
+                            <td><small class="text-muted">${oldStr || '—'}</small></td>
+                            <td><small class="text-primary">${newStr || '—'}</small></td>
+                            <td>${h.affected_sessions_count > 0 ? h.affected_sessions_count + ' 节未来课次' : '—'}</td>
+                        </tr>`;
+                    });
+                    html += '</tbody></table>';
+                    container.innerHTML = html;
+                }
+            });
+            const modal = new bootstrap.Modal(document.getElementById('patternHistoryModal'));
+            modal.show();
+        });
+    });
+
+    // Mark held
+    document.querySelectorAll('.mark-held-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (!confirm('标记该课次为已完成？')) return;
+            const sessionId = this.dataset.sessionId;
+            const formData = new FormData();
+            formData.append('action', 'held');
+            fetch(`/classes/${classId}/sessions/${sessionId}/status`, {
+                method: 'POST',
+                body: formData,
+                headers: {'X-Requested-With': 'XMLHttpRequest'}
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('操作失败：' + data.error);
+                }
+            });
+        });
+    });
+
+    // Cancel session
+    document.querySelectorAll('.cancel-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            currentSessionId = this.dataset.sessionId;
+            const modal = new bootstrap.Modal(document.getElementById('cancelModal'));
+            modal.show();
+        });
+    });
+
+    document.getElementById('confirmCancel').addEventListener('click', function() {
+        const form = document.getElementById('cancelForm');
+        const formData = new FormData(form);
+        formData.append('action', 'cancel');
+        
+        fetch(`/classes/${classId}/sessions/${currentSessionId}/status`, {
+            method: 'POST',
+            body: formData,
+            headers: {'X-Requested-With': 'XMLHttpRequest'}
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('取消失败：' + data.error);
+            }
+        });
+    });
+
+    // Delete session
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (!confirm('确定删除该课次？已录入的分数也将被删除。')) return;
+            const sessionId = this.dataset.sessionId;
+            fetch(`/classes/${classId}/sessions/${sessionId}/delete`, {
+                method: 'POST',
+                headers: {'X-Requested-With': 'XMLHttpRequest'}
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('删除失败：' + data.error);
+                }
+            });
+        });
+    });
+
+    // Score modal
+    let isScoreEditMode = false;
+    
+    document.querySelectorAll('.score-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            currentSessionId = this.dataset.sessionId;
+            currentSessionDate = this.dataset.sessionDate;
+            document.getElementById('scoreModalDate').textContent = currentSessionDate;
+            isScoreEditMode = false;
+            updateScoreModalUI();
+
+            // Load existing scores
+            fetch(`/classes/${classId}/sessions/${currentSessionId}/scores`)
+            .then(r => r.json())
+            .then(data => {
+                // Populate view mode
+                document.querySelectorAll('#scoreViewBody tr').forEach(row => {
+                    const studentId = parseInt(row.dataset.studentId);
+                    const studentScores = data.scores.filter(s => s.student_id === studentId);
+
+                    // Reset all cells
+                    row.querySelectorAll('.score-view-cell').forEach(cell => {
+                        cell.innerHTML = '<span class="text-muted">—</span>';
+                    });
+                    row.querySelector('.score-comment-cell').innerHTML = '<span class="text-muted">—</span>';
+
+                    // Set scores
+                    studentScores.forEach(s => {
+                        const cell = row.querySelector(`.score-view-cell[data-type="${s.score_type}"]`);
+                        if (cell) {
+                            let scoreText = s.score;
+                            // Add special labels
+                            if (s.score_type === 'Q') {
+                                if (s.score == 5) scoreText = '✅ 全勤';
+                                else if (s.score == 3) scoreText = '🔄 补课';
+                                else if (s.score == 0) scoreText = '❌ 缺勤';
+                            } else if (s.score_type === 'T') {
+                                scoreText = '🎓 +1';
+                            }
+                            cell.innerHTML = `<span class="badge bg-primary">${scoreText}</span>`;
+                        }
+                    });
+
+                    // Set comment
+                    if (studentScores.length > 0 && studentScores[0].comment) {
+                        row.querySelector('.score-comment-cell').textContent = studentScores[0].comment;
+                    }
+                });
+
+                // Populate edit mode
+                document.querySelectorAll('#scoreEditBody tr').forEach(row => {
+                    const studentId = parseInt(row.dataset.studentId);
+                    const studentScores = data.scores.filter(s => s.student_id === studentId);
+
+                    studentScores.forEach(s => {
+                        const select = row.querySelector(`.score-select[data-type="${s.score_type}"]`);
+                        if (select) select.value = s.score.toString();
+                    });
+
+                    // Set comment
+                    const commentInput = row.querySelector('.comment-input');
+                    if (studentScores.length > 0 && studentScores[0].comment) {
+                        commentInput.value = studentScores[0].comment;
+                    }
+                });
+            });
+
+            const modal = new bootstrap.Modal(document.getElementById('scoreModal'));
+            modal.show();
+        });
+    });
+
+    // Toggle edit mode
+    document.getElementById('toggleEditScore').addEventListener('click', function() {
+        isScoreEditMode = !isScoreEditMode;
+        updateScoreModalUI();
+    });
+
+    function updateScoreModalUI() {
+        const viewMode = document.getElementById('scoreViewMode');
+        const editMode = document.getElementById('scoreEditMode');
+        const toggleBtn = document.getElementById('toggleEditScore');
+        const saveBtn = document.getElementById('confirmSaveScores');
+
+        if (isScoreEditMode) {
+            viewMode.style.display = 'none';
+            editMode.style.display = 'block';
+            toggleBtn.textContent = '👁️ 查看';
+            saveBtn.style.display = 'inline-block';
+        } else {
+            viewMode.style.display = 'block';
+            editMode.style.display = 'none';
+            toggleBtn.textContent = '✏️ 编辑';
+            saveBtn.style.display = 'none';
+        }
+    }
+
+    document.getElementById('confirmSaveScores').addEventListener('click', function() {
+        const scores = [];
+        document.querySelectorAll('#scoreEditBody tr').forEach(row => {
+            const studentId = parseInt(row.dataset.studentId);
+            const comment = row.querySelector('.comment-input').value;
+
+            row.querySelectorAll('.score-select').forEach(select => {
+                if (select.value) {
+                    scores.push({
+                        student_id: studentId,
+                        score_type: select.dataset.type,
+                        score: parseFloat(select.value),
+                        comment: comment || null
+                    });
+                }
+            });
+        });
+
+        fetch(`/classes/${classId}/sessions/${currentSessionId}/scores`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({scores: scores, recorded_by: 'web'})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('保存失败：' + data.error);
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

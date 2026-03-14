@@ -132,24 +132,66 @@ def list_classes():
             except Exception:
                 errors.append('同类型/同级别/同期数班级已存在')
 
+    # GET filters
+    filters = {
+        'teacher': request.args.get('teacher', '').strip(),
+        'weekday': request.args.get('weekday', '').strip(),
+        'class_type': request.args.get('class_type', '').strip(),
+        'status': request.args.get('status', '').strip(),
+    }
+    
     raw = list_classes_with_counts()
     classes = []
+    all_teachers = set()
+    
     for cls, cnt in raw:
+        teacher = getattr(cls, 'teacher', None)
+        class_type = cls.type
+        status = cls.status
+        class_time = getattr(cls, 'class_time', None) or ''
+        
+        # Collect all teachers for filter dropdown
+        if teacher:
+            all_teachers.add(teacher)
+        
+        # Apply filters
+        if filters['teacher'] and teacher != filters['teacher']:
+            continue
+        if filters['class_type'] and class_type != filters['class_type']:
+            continue
+        # Status filter: only filter if a specific status is selected (not empty)
+        if filters['status']:
+            # Handle None status by converting to empty string for comparison
+            if (status or '') != filters['status']:
+                continue
+        # Weekday filter: check if class_time contains the weekday
+        if filters['weekday']:
+            weekday_map = {'0': '周一', '1': '周二', '2': '周三', '3': '周四',
+                          '4': '周五', '5': '周六', '6': '周日'}
+            weekday_cn = weekday_map.get(filters['weekday'], '')
+            # Also check for numeric format (e.g., "周 1" or "1")
+            if weekday_cn not in class_time and filters['weekday'] not in class_time:
+                continue
+        
         classes.append({
             'id': cls.id,
             'type': cls.type,
             'level': cls.level,
             'group_number': cls.group_number,
             'status': cls.status,
-            'teacher': getattr(cls, 'teacher', None),
-            'class_time': getattr(cls, 'class_time', None),
+            'teacher': teacher,
+            'class_time': class_time,
             'start_date': getattr(cls, 'start_date', None),
             'student_count': cnt,
         })
+    
+    # Sort teachers
+    teachers = sorted(list(all_teachers))
+    
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return render_template('classes/_modal_content.html', classes=classes, errors=errors)
     # normal browser request: render the full management page
-    return render_template('classes/manage.html', classes=classes, errors=errors)
+    return render_template('classes/manage.html', classes=classes, errors=errors, filters=filters, teachers=teachers)
 
 
 

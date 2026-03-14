@@ -35,7 +35,12 @@
                 <td>{{ c.class_time or '—' }}</td>
                 <td>{{ c.start_date or '—' }}</td>
                 <td>{{ c.student_count }}</td>
-                <td><a href="{{ url_for('classes.manage_class_students', class_id=c.id) }}" data-load-detail class="btn btn-sm btn-outline-primary">班级学员管理</a></td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <a href="{{ url_for('classes.manage_class_students', class_id=c.id) }}" class="btn btn-outline-primary">学员</a>
+                        <a href="{{ url_for('sessions.list_class_sessions', class_id=c.id) }}" class="btn btn-outline-success">课次</a>
+                    </div>
+                </td>
             </tr>
             {% endfor %}
         </tbody>

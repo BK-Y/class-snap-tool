@@ -4,6 +4,7 @@ from .views.students import students_bp
 from .views.classes import classes_bp
 from .views.index import index_bp
 from .views.college_tools import college_tools_bp
+from .views.sessions import sessions_bp
 
 # optional: load environment variables from a .env file if present. this
 # keeps deployment flexible but doesn't make python-dotenv a hard requirement.
@@ -120,6 +121,7 @@ app.register_blueprint(students_bp)
 app.register_blueprint(classes_bp)
 app.register_blueprint(index_bp)
 app.register_blueprint(college_tools_bp)
+app.register_blueprint(sessions_bp)
 
 if __name__ == '__main__':
     app.run(debug=True)

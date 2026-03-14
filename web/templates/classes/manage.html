@@ -2,31 +2,153 @@
 
 {% block title %}班级管理 - {{ super() }}{% endblock %}
 
+{% block extra_css %}
+<style>
+    .filter-bar {
+        background: white;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        padding: 0.5rem 1rem;
+        margin-bottom: 1rem;
+    }
+    .filter-row {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-bottom: 0.25rem;
+    }
+    .filter-item {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        flex: 0 0 auto;
+    }
+    .filter-item label {
+        font-size: 0.85rem;
+        color: #6c757d;
+        white-space: nowrap;
+        margin: 0;
+    }
+    .filter-item .form-control,
+    .filter-item .form-select {
+        height: 34px;
+        font-size: 0.85rem;
+        padding: 0.25rem 0.5rem;
+    }
+    .filter-item .weekday-select { width: 75px; }
+    .filter-item .teacher-select { width: 90px; }
+    .filter-item .type-select { width: 85px; }
+    .filter-item .status-select { width: 75px; }
+    .filter-actions {
+        margin-left: auto;
+        display: flex;
+        gap: 0.35rem;
+    }
+    .filter-actions .btn {
+        padding: 0.25rem 0.75rem;
+        font-size: 0.85rem;
+        height: 34px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<h2>班级管理</h2>
-
-{% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-        {% for category, message in messages %}
-            <div class="alert alert-{{ 'success' if category=='success' else 'danger' }}" role="alert">
-                {{ message }}
-            </div>
-        {% endfor %}
-    {% endif %}
-{% endwith %}
-{% if errors %}
-    <div class="alert alert-danger" role="alert">
-        <ul class="mb-0">
-        {% for err in errors %}
-            <li>{{ err }}</li>
-        {% endfor %}
-        </ul>
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">班级管理</h2>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addClassModal">➕ 新增班级</button>
     </div>
-{% endif %}
 
-<p><button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addClassModal">➕ 新增班级</button></p>
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+        <form id="filterForm" method="GET">
+            <div class="filter-row">
+                <div class="text-muted" style="font-size:0.85rem;">🔍 筛选：</div>
+                
+                <!-- <div class="filter-item"> -->
+                    <label>老师：</label>
+                    <!-- <select name="teacher" class="form-select teacher-select" id="filterTeacher"> -->
+                    <select name="teacher" id="filterTeacher">
+                        <option value="">全部</option>
+                        {% for t in teachers %}
+                        <option value="{{ t }}" {% if filters.teacher == t %}selected{% endif %}>{{ t }}</option>
+                        {% endfor %}
+                    </select>
+                <!-- </div> -->
+                
+                <!-- <div class="filter-item"> -->
+                    <label>周几：</label>
+                    <!-- <select name="weekday" class="form-select weekday-select" id="filterWeekday"> -->
+                    <select name="weekday"  id="filterWeekday">
+                        <option value="">全部</option>
+                        <option value="0" {% if filters.weekday == '0' %}selected{% endif %}>周一</option>
+                        <option value="1" {% if filters.weekday == '1' %}selected{% endif %}>周二</option>
+                        <option value="2" {% if filters.weekday == '2' %}selected{% endif %}>周三</option>
+                        <option value="3" {% if filters.weekday == '3' %}selected{% endif %}>周四</option>
+                        <option value="4" {% if filters.weekday == '4' %}selected{% endif %}>周五</option>
+                        <option value="5" {% if filters.weekday == '5' %}selected{% endif %}>周六</option>
+                        <option value="6" {% if filters.weekday == '6' %}selected{% endif %}>周日</option>
+                    </select>
+                <!-- </div> -->
+                
+                <!-- <div class="filter-item"> -->
+                    <label>类型：</label>
+                    <!-- <select name="class_type" class="form-select type-select" id="filterClassType"> -->
+                    <select name="class_type" id="filterClassType">
+                        <option value="">全部</option>
+                        <option value="常规班" {% if filters.class_type == '常规班' %}selected{% endif %}>常规班</option>
+                        <option value="竞赛集训" {% if filters.class_type == '竞赛集训' %}selected{% endif %}>竞赛集训</option>
+                        <option value="自定义" {% if filters.class_type == '自定义' %}selected{% endif %}>自定义</option>
+                    </select>
+                <!-- </div> -->
+                
+                <!-- <div class="filter-item"> -->
+                    <label>状态：</label>
+                    <!-- <select name="status" class="form-select status-select" id="filterStatus"> -->
+                    <select name="status"  id="filterStatus">
+                        <option value="">全部</option>
+                        <option value="planned" {% if filters.status == 'planned' %}selected{% endif %}>预开班</option>
+                        <option value="active" {% if filters.status == 'active' %}selected{% endif %}>正常班</option>
+                        <option value="completed" {% if filters.status == 'completed' %}selected{% endif %}>结课班</option>
+                    </select>
+                <!-- </div> -->
+                
+                <!-- <div class="filter-actions"> -->
+                    <!-- <button type="submit" class="btn btn-primary">筛选</button> -->
+                    <button type="submit" >筛选</button>
+                    <a href="{{ url_for('classes.list_classes') }}" class="btn btn-outline-secondary">重置</a>
+                <!-- </div> -->
+            </div>
+        </form>
+    </div>
 
-<!-- 新增班级弹窗，内容复用已有模板 -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'success' if category=='success' else 'danger' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if errors %}
+        <div class="alert alert-danger" role="alert">
+            <ul class="mb-0">
+            {% for err in errors %}
+                <li>{{ err }}</li>
+            {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
+    {% include 'classes/_class_table.html' %}
+</div>
+
+<!-- 新增班级弹窗 -->
 <div class="modal fade" id="addClassModal" tabindex="-1" aria-labelledby="addClassModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -35,18 +157,11 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
             </div>
             <div class="modal-body">
-                {# reuse the shared form but point at this page's POST route #}
                 {% include 'classes/_class_form.html' %}
             </div>
         </div>
     </div>
 </div>
-
-{# flash messages and errors are already rendered by the included form if desired, but we replicate above #}
-
-{% include 'classes/_class_table.html' %}
-
-<p><a href="{{ url_for('index.index') }}">← 返回首页</a></p>
 
 <script>
 // same dynamic field script as modal_content; ensure fields update inside modal or page
@@ -88,5 +203,4 @@
     updateCompetitionEventFields();
 })();
 </script>
-
 {% endblock %}
